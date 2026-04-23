@@ -1,0 +1,7 @@
+Chào mọi người, em vừa làm xong một dự án nhỏ mang tên **VibeGuide**. Xuất phát từ việc em hay nhờ AI (Claude Code) code app nhưng nhiều lúc báo lỗi kiểu "nút này bấm không được" thì AI cứ sửa đi sửa lại mãi không xong, em ngồi nhìn màn hình không biết nó đang làm gì hay sửa chỗ này có làm hỏng chỗ khác không.
+
+Em đã gom tất cả những khó chịu đó và làm ra app này để giúp AI hiểu rõ app hơn trước khi sửa, rồi báo em bằng tiếng Việt cho dễ hiểu. Có thể chụp lại app trước khi sửa, sợ hỏng thì quay lại được. Hy vọng là mn dùng thử và góp ý thêm ạ, em cảm ơn mn nhiều. Cảm ơn ad duyệt bài ❤️
+
+github.com/hungf1511/vibeguide
+
+#j2team_share
