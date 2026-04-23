@@ -1,5 +1,7 @@
 # VibeGuide — MCP Server cho AI Developer & Non-Tech Founder
 
+[🇻🇳 Tiếng Việt](README.md) | [🇺🇸 English](README_EN.md)
+
 VibeGuide là cầu nối giữa AI Developer (Claude Code) và Non-Tech Founder để ngăn chặn vòng lặp fix-code mãi không dứt. Nó cung cấp 18 công cụ MCP giúp AI hiểu codebase, đánh giá rủi ro, lên kế hoạch test, và đề xuất plugin Claude Code phù hợp — tất cả output bằng tiếng Việt.
 
 ## Tại sao cần VibeGuide?
