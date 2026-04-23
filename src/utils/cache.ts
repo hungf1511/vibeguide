@@ -30,6 +30,21 @@ export function set(repo: string, data: Record<string, unknown>): void {
   fs.writeFileSync(cacheKey(repo), JSON.stringify(data, null, 2), "utf-8");
 }
 
+export function getFileHashes(repo: string): Record<string, string> | null {
+  const key = cacheKey(repo) + ".hashes";
+  if (!fs.existsSync(key)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(key, "utf-8")) as Record<string, string>;
+  } catch {
+    return null;
+  }
+}
+
+export function setFileHashes(repo: string, hashes: Record<string, string>): void {
+  ensureDir();
+  fs.writeFileSync(cacheKey(repo) + ".hashes", JSON.stringify(hashes, null, 2), "utf-8");
+}
+
 export function invalidate(repo: string): void {
   const key = cacheKey(repo);
   if (fs.existsSync(key)) {

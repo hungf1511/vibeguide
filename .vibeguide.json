@@ -1,0 +1,33 @@
+{
+  "framework": "auto",
+  "ignorePatterns": ["*.test.ts", "*.spec.ts", "__tests__/**", "*.d.ts"],
+  "entryPoints": {
+    "nextjs": ["page.tsx", "page.ts", "page.jsx", "page.js", "layout.tsx", "layout.ts", "layout.jsx", "layout.js", "route.ts", "route.tsx"],
+    "remix": ["route.tsx", "route.ts", "route.jsx", "route.js"],
+    "nuxt": ["pages/**/*.vue", "app.vue"]
+  },
+  "aliases": {},
+  "scan": {
+    "incremental": true,
+    "parallel": true,
+    "maxDepth": 10
+  },
+  "thresholds": {
+    "bugPatterns": {
+      "critical": 0,
+      "high": 3,
+      "medium": 10
+    },
+    "orphanFiles": 10,
+    "contextBudget": 4000
+  },
+  "security": {
+    "scanDependencies": true,
+    "owaspTop10": true,
+    "hardcodedSecrets": ["password", "secret", "token", "api_key", "private_key", "access_key"]
+  },
+  "vulnerability": {
+    "checkNpmAudit": true,
+    "severity": "moderate"
+  }
+}

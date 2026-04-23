@@ -120,7 +120,7 @@ export interface DeployCheck {
   name: string;
   passed: boolean;
   message: string;
-  severity: "info" | "warning" | "critical";
+  severity: "info" | "warning" | "high" | "critical";
 }
 
 export interface FixSuggestionResult {

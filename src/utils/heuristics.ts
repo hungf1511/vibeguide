@@ -60,6 +60,55 @@ export const BUG_PATTERNS: BugPattern[] = [
     description: "Dangerous eval() usage",
     severity: "critical",
   },
+  // OWASP Top 10 patterns
+  {
+    id: "xss-innerHTML",
+    regex: /\.innerHTML\s*=/,
+    description: "Potential XSS via innerHTML assignment",
+    severity: "critical",
+  },
+  {
+    id: "unsafe-innerHTML",
+    regex: /dangerouslySetInnerHTML\s*[:=]/,
+    description: "React dangerouslySetInnerHTML without sanitization",
+    severity: "critical",
+  },
+  {
+    id: "command-injection",
+    regex: /(?:exec|spawn|execSync|spawnSync)\s*\(\s*[`"'].*\$/,
+    description: "Possible command injection via template literal",
+    severity: "critical",
+  },
+  {
+    id: "path-traversal",
+    regex: /(?:readFile|readFileSync|writeFile|writeFileSync)\s*\(\s*(?:req\.|req\.query|req\.body|req\.params)/,
+    description: "Potential path traversal using user input",
+    severity: "high",
+  },
+  {
+    id: "insecure-cors",
+    regex: /Access-Control-Allow-Origin\s*[:=]\s*["']\*["']/,
+    description: "Insecure CORS: allowing all origins",
+    severity: "high",
+  },
+  {
+    id: "insecure-random",
+    regex: /Math\.random\s*\(\)/,
+    description: "Insecure randomness for security purposes",
+    severity: "medium",
+  },
+  {
+    id: "weak-crypto",
+    regex: /(?:createHash\s*\(\s*["']md5["']|createHash\s*\(\s*["']sha1["']|createCipher|createDecipher)\b/,
+    description: "Weak cryptographic algorithm (MD5/SHA1) or deprecated cipher",
+    severity: "high",
+  },
+  {
+    id: "prototype-pollution",
+    regex: /Object\.assign\s*\(\s*(?:req\.body|req\.query|req\.params)/,
+    description: "Potential prototype pollution via Object.assign with user input",
+    severity: "high",
+  },
 ];
 
 export function matchPatterns(content: string, filePath: string): { pattern: BugPattern; line: number }[] {

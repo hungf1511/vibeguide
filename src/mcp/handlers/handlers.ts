@@ -27,6 +27,8 @@ import { createSnapshot, listSnapshots, restoreSnapshot, getSnapshot } from "../
 import { generateSuggestion } from "../../utils/fixSuggestions.js";
 import { generateChangelog } from "../../utils/changelog.js";
 import { discoverInstalledPlugins, recommendPluginsForSituation } from "../../utils/pluginDiscovery.js";
+import { loadConfig, detectFramework, getEntryPointPatterns, shouldIgnore } from "../../utils/configLoader.js";
+import { checkKnownVulnerabilities } from "../../utils/vulnerabilityScanner.js";
 
 export async function handleImpact(args: { filePath: string; repoPath?: string }): Promise<ImpactResult> {
   const repo = resolveRepo(args.repoPath);
@@ -62,7 +64,7 @@ export async function handleImpact(args: { filePath: string; repoPath?: string }
 
   // Hierarchical grouping for large repos
   const hierarchical = buildHierarchicalImpact(direct, indirect);
-  const entryPointsAtRisk = findEntryPoints(direct, indirect, deps.edges);
+  const entryPointsAtRisk = findEntryPoints(direct, indirect, deps.edges, repo);
 
   return {
     filePath: args.filePath,
@@ -107,26 +109,44 @@ function buildHierarchicalImpact(direct: ImpactResult["affectedFiles"], indirect
   };
 }
 
-function findEntryPoints(direct: ImpactResult["affectedFiles"], indirect: ImpactResult["indirectFiles"], edges: DepEdge[]): string[] {
+function findEntryPoints(direct: ImpactResult["affectedFiles"], indirect: ImpactResult["indirectFiles"], edges: DepEdge[], repo: string): string[] {
   const impacted = new Set([...direct.map((d) => d.file), ...indirect.map((i) => i.file)]);
   const entryPoints: string[] = [];
-  const entryPatterns = /\/(pages|app|routes|views|screens)\/|index\.(tsx?|jsx?|vue)$|App\.(tsx?|jsx?|vue)$|main\.(tsx?|jsx?|ts)$/i;
   for (const file of impacted) {
-    if (entryPatterns.test(file)) entryPoints.push(file);
+    if (edgePatterns(file, repo)) entryPoints.push(file);
   }
   // If no direct entry points, trace upstream via edges
   if (entryPoints.length === 0) {
     const upstream = new Set<string>();
     for (const edge of edges) {
-      if (impacted.has(edge.from) && edgePatterns(edge.to)) upstream.add(edge.to);
+      if (impacted.has(edge.from) && edgePatterns(edge.to, repo)) upstream.add(edge.to);
     }
     entryPoints.push(...Array.from(upstream));
   }
   return entryPoints;
 }
 
-function edgePatterns(file: string): boolean {
-  return /\/(pages|app|routes|views|screens)\/|index\.(tsx?|jsx?|vue)$|App\.(tsx?|jsx?|vue)$|main\.(tsx?|jsx?|ts)$/i.test(file);
+function edgePatterns(file: string, repo: string): boolean {
+  const config = loadConfig(repo);
+  const patterns = getEntryPointPatterns(repo, config);
+  for (const regex of patterns) {
+    if (regex.test(file)) return true;
+  }
+  return false;
+}
+
+function isFrameworkFile(file: string, repo: string): string | undefined {
+  const framework = detectFramework(repo);
+  const config = loadConfig(repo);
+  const frameworkMap: Record<string, string> = {
+    nextjs: "Next.js",
+    remix: "Remix",
+    nuxt: "Nuxt",
+    react: "React",
+    vue: "Vue",
+    generic: "Generic",
+  };
+  return frameworkMap[framework] || "Unknown";
 }
 
 export async function handleTraceJourney(args: { journey: string; repoPath?: string }): Promise<{ steps: string[]; files: string[]; confidence: number }> {
@@ -546,6 +566,24 @@ export async function handleDeployCheck(args: { repoPath?: string; checkBugPatte
     passed: secretCount === 0,
     message: secretCount > 0 ? `Phát hiện ${secretCount} hardcoded secret!` : "Không phát hiện hardcoded secret.",
     severity: secretCount > 0 ? "critical" : "info",
+  });
+
+  // 5. Dependency vulnerabilities
+  const vulns = checkKnownVulnerabilities(repo);
+  checks.push({
+    name: "Dependency Vulnerabilities",
+    passed: vulns.length === 0,
+    message: vulns.length > 0 ? `Phát hiện ${vulns.length} lỗ hổng dependency (${vulns.map((v) => v.package).join(", ")}).` : "Không phát hiện lỗ hổng dependency nào.",
+    severity: vulns.some((v) => v.severity === "critical") ? "critical" : vulns.some((v) => v.severity === "high") ? "high" : vulns.length > 0 ? "warning" : "info",
+  });
+
+  // 6. Framework detection
+  const framework = detectFramework(repo);
+  checks.push({
+    name: "Framework Detection",
+    passed: true,
+    message: `Phát hiện framework: ${framework}.`,
+    severity: "info",
   });
 
   const allPassed = checks.every((c) => c.passed);
