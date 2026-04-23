@@ -30,6 +30,14 @@ import { discoverInstalledPlugins, recommendPluginsForSituation } from "../../ut
 
 export async function handleImpact(args: { filePath: string; repoPath?: string }): Promise<ImpactResult> {
   const repo = resolveRepo(args.repoPath);
+
+  // Auto-snapshot before impact analysis so dev can rollback
+  let autoSnapshotId: string | undefined;
+  try {
+    const snap = createSnapshot(repo, `auto-before-impact-${args.filePath.replace(/[/\\]/g, "-")}`);
+    autoSnapshotId = snap.snapshotId;
+  } catch { /* snapshot optional */ }
+
   const deps = getCachedDeps(repo);
   const direct: ImpactResult["affectedFiles"] = [];
   const indirect: ImpactResult["indirectFiles"] = [];
@@ -66,6 +74,7 @@ export async function handleImpact(args: { filePath: string; repoPath?: string }
     needsApproval: risk === "high",
     hierarchical,
     entryPointsAtRisk: entryPointsAtRisk.slice(0, 10),
+    autoSnapshotId,
   };
 }
 
@@ -192,7 +201,7 @@ export async function handleRegression(args: { changedFiles: string[]; repoPath?
   return { testFlows: flows, passed: flows.every((f) => f.passed) };
 }
 
-export async function handleScanRepo(args: { repoPath?: string }): Promise<{ summary: string; fileTypes: Record<string, number>; topLevelFolders: string[]; edges: DepGraph["edges"]; stats: { totalFiles: number; totalFolders: number } }> {
+export async function handleScanRepo(args: { repoPath?: string }): Promise<{ summary: string; fileTypes: Record<string, number>; topLevelFolders: string[]; edges: DepGraph["edges"]; stats: { totalFiles: number; totalFolders: number }; git: { branch: string; modified: number; ahead: number } }> {
   const repo = resolveRepo(args.repoPath);
   const structure = scanDirectory(repo);
   const stats = countTree(structure);
@@ -207,12 +216,15 @@ export async function handleScanRepo(args: { repoPath?: string }): Promise<{ sum
 
   const topLevelFolders = structure.filter((n) => n.type === "folder").map((n) => n.name);
 
+  const gitStatus = getGitStatus(repo);
+
   return {
-    summary: `Repo có ${stats.files} file, ${stats.folders} folder. Nhiều nhất: ${Object.entries(fileTypes).sort((a, b) => b[1] - a[1])[0]?.join(" ") || "N/A"}.`,
+    summary: `Repo có ${stats.files} file, ${stats.folders} folder. Branch: ${gitStatus.branch}. Nhiều nhất: ${Object.entries(fileTypes).sort((a, b) => b[1] - a[1])[0]?.join(" ") || "N/A"}.`,
     fileTypes,
     topLevelFolders,
     edges: deps.edges.slice(0, 50),
     stats: { totalFiles: stats.files, totalFolders: stats.folders },
+    git: { branch: gitStatus.branch, modified: gitStatus.modified.length, ahead: gitStatus.ahead },
   };
 }
 

@@ -143,14 +143,58 @@ export async function handleToolCall(name: string, args: unknown): Promise<any> 
   }
 
   const result = await handler(parsed.data);
+
+  // Smart context budget: auto-compress output if too large
+  const json = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+  const tokenEstimate = Math.ceil(json.length / 4); // ~4 chars per token
+  const BUDGET = 4000; // ~4K tokens per tool response
+  let output = json;
+  if (tokenEstimate > BUDGET) {
+    output = compressOutput(result, BUDGET * 4);
+  }
+
   return {
     content: [
       {
         type: "text",
-        text: typeof result === "string" ? result : JSON.stringify(result, null, 2),
+        text: output,
       },
     ],
   };
+}
+
+/** Compress output to fit context budget by truncating arrays and removing verbose fields */
+function compressOutput(result: unknown, maxChars: number): string {
+  if (typeof result === "string") return result.slice(0, maxChars) + "\n... [truncated]";
+  const obj = result as Record<string, unknown>;
+  const compressed: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (Array.isArray(value)) {
+      if (value.length > 10) {
+        compressed[key] = value.slice(0, 10);
+        compressed[`${key}Total`] = value.length;
+        compressed[`${key}Note`] = `Showing top 10 of ${value.length}. Use specific tool to see more.`;
+      } else {
+        compressed[key] = value;
+      }
+    } else if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      const sub = value as Record<string, unknown>;
+      const subJson = JSON.stringify(sub);
+      if (subJson.length > 500) {
+        compressed[key] = `{ ... truncated (${Object.keys(sub).length} keys) }`;
+        compressed[`${key}Keys`] = Object.keys(sub).slice(0, 10);
+      } else {
+        compressed[key] = value;
+      }
+    } else {
+      compressed[key] = value;
+    }
+  }
+  let output = JSON.stringify(compressed, null, 2);
+  if (output.length > maxChars) {
+    output = output.slice(0, maxChars) + "\n... [output truncated to fit context budget]";
+  }
+  return output;
 }
 
 function getToolDescription(name: string): string {

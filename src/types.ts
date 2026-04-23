@@ -27,6 +27,8 @@ export interface ImpactResult {
   hierarchical?: HierarchicalImpact;
   /** Entry points (routes/pages) at risk from this change */
   entryPointsAtRisk?: string[];
+  /** Auto-snapshot ID created before impact analysis */
+  autoSnapshotId?: string;
 }
 
 export interface HierarchicalImpact {
