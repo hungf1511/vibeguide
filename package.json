@@ -1,0 +1,21 @@
+{
+  "name": "vibeguide",
+  "version": "1.0.0",
+  "description": "Bridge between AI Developers and Non-Tech Users via MCP",
+  "main": "dist/mcp/server.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/mcp/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "simple-git": "^3.27.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

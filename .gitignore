@@ -1,0 +1,8 @@
+node_modules/
+dist/
+cache/
+*.log
+*.tmp
+.DS_Store
+output-debug.txt
+evolve-keywords.cjs
