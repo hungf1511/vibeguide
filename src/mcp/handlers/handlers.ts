@@ -18,6 +18,7 @@ import type {
   ChangelogResult,
   DependencyGraphResult,
   SmartRouteResult,
+  ExportReportResult,
 } from "../../types.js";
 import { resolveSafe, resolveRepo } from "../../utils/pathGuard.js";
 import { scanDirectory, scanDependencies, getFileContent, getGitStatus } from "../../utils/scanner.js";
@@ -30,6 +31,7 @@ import { discoverInstalledPlugins, recommendPluginsForSituation } from "../../ut
 import { loadConfig, detectFramework, getEntryPointPatterns, shouldIgnore } from "../../utils/configLoader.js";
 import { checkKnownVulnerabilities } from "../../utils/vulnerabilityScanner.js";
 import { getSession, getTimeline, generateProgressSummary } from "../../utils/sessionContext.js";
+import { exportReport, saveReport } from "../../utils/reportExporter.js";
 
 export async function handleImpact(args: { filePath: string; repoPath?: string }): Promise<ImpactResult> {
   const repo = resolveRepo(args.repoPath);
@@ -331,14 +333,18 @@ export async function handleBugReport(args: { description: string; repoPath?: st
 }
 
 export async function handleImpactConfirm(args: { filePath: string; repoPath?: string }): Promise<{ affectedFeatures: string[]; downtime: string; needsApproval: boolean }> {
+  const repo = resolveRepo(args.repoPath);
   const impact = await handleImpact(args);
-  const criticalFeatures = ["Thanh toán", "Giỏ hàng", "Đăng nhập", "Xác thực", "Payment", "Checkout", "Cart", "Login", "Auth"];
+  const config = loadConfig(repo);
+  const criticalFeatures = config.criticalFeatures;
   const affectsCritical = impact.features.some((f) => criticalFeatures.some((c) => f.toLowerCase().includes(c.toLowerCase())));
-  const criticalBasenames = ["Cart", "Payment", "Checkout", "Auth", "Login"];
+  const criticalBasenames = config.criticalFeatures.map((f) => path.basename(f, path.extname(f)));
   const affectsCriticalBasename = impact.affectedFiles.some((f) =>
     criticalBasenames.some((c) => path.basename(f.file, path.extname(f.file)).toLowerCase().includes(c.toLowerCase()))
   );
-  const needsApproval = impact.needsApproval || affectsCritical || affectsCriticalBasename || impact.affectedFiles.length > 2;
+  const threshold = config.severityThresholds.needsApproval;
+  const severityValue = { critical: 3, high: 2, medium: 1, low: 0 };
+  const needsApproval = impact.needsApproval || affectsCritical || affectsCriticalBasename || impact.affectedFiles.length > 2 || severityValue[impact.risk] >= severityValue[threshold];
   return { affectedFeatures: impact.features, downtime: impact.risk === "high" ? "3 days" : impact.risk === "medium" ? "1 day" : "30 minutes", needsApproval };
 }
 
@@ -496,6 +502,7 @@ function inferChangeDescription(file: string, content: string): string {
 export async function handleDeployCheck(args: { repoPath?: string; checkBugPatterns?: boolean; checkUncommitted?: boolean; checkOrphans?: boolean }): Promise<DeployCheckResult> {
   const repo = resolveRepo(args.repoPath);
   const deps = getCachedDeps(repo);
+  const config = loadConfig(repo);
   const checks: DeployCheck[] = [];
 
   // 1. Bug patterns
@@ -587,10 +594,12 @@ export async function handleDeployCheck(args: { repoPath?: string; checkBugPatte
     severity: "info",
   });
 
+  const severityValue: Record<string, number> = { critical: 3, high: 2, medium: 1, low: 0 };
+  const blockThreshold = severityValue[config.severityThresholds.deployBlock] ?? 3;
+  const blockedChecks = checks.filter((c) => !c.passed && severityValue[c.severity] >= blockThreshold);
   const allPassed = checks.every((c) => c.passed);
-  const criticalChecks = checks.filter((c) => c.severity === "critical" && !c.passed);
-  const summary = criticalChecks.length > 0
-    ? `❌ KHÔNG NÊN DEPLOY: ${criticalChecks.length} check critical thất bại.`
+  const summary = blockedChecks.length > 0
+    ? `❌ KHÔNG NÊN DEPLOY: ${blockedChecks.length} check ${config.severityThresholds.deployBlock} thất bại.`
     : allPassed
       ? "✅ Tất cả check pass — có thể deploy."
       : `⚠️ Có ${checks.filter((c) => !c.passed).length} check warning — review trước khi deploy.`;
@@ -792,4 +801,17 @@ export async function handleSessionStatus(args: { repoPath?: string }): Promise<
     snapshotId: ctx.snapshotId,
     lastAction: ctx.lastAction,
   };
+}
+
+export async function handleExportReport(args: { repoPath?: string; format?: "markdown" | "json" | "text"; saveToFile?: boolean }): Promise<ExportReportResult> {
+  const repo = resolveRepo(args.repoPath);
+  const config = loadConfig(repo);
+  const format = args.format ?? config.outputFormat ?? "markdown";
+  const ctx = getSession(repo);
+  const report = exportReport(ctx, format);
+  let filePath: string | undefined;
+  if (args.saveToFile) {
+    filePath = saveReport(repo, ctx, format);
+  }
+  return { report, filePath, format };
 }

@@ -25,6 +25,13 @@ export interface VibeguideConfig {
     checkNpmAudit: boolean;
     severity: string;
   };
+  criticalFeatures: string[];
+  language: "vi" | "en";
+  outputFormat: "json" | "markdown" | "text";
+  severityThresholds: {
+    deployBlock: "critical" | "high" | "medium";
+    needsApproval: "critical" | "high" | "medium";
+  };
 }
 
 const DEFAULT_CONFIG: VibeguideConfig = {
@@ -41,6 +48,10 @@ const DEFAULT_CONFIG: VibeguideConfig = {
   thresholds: { bugPatterns: { critical: 0, high: 3, medium: 10 }, orphanFiles: 10, contextBudget: 4000 },
   security: { scanDependencies: true, owaspTop10: true, hardcodedSecrets: ["password", "secret", "token", "api_key", "private_key", "access_key"] },
   vulnerability: { checkNpmAudit: true, severity: "moderate" },
+  criticalFeatures: ["Thanh toán", "Giỏ hàng", "Đăng nhập", "Xác thực", "Payment", "Checkout", "Cart", "Login", "Auth"],
+  language: "vi",
+  outputFormat: "json",
+  severityThresholds: { deployBlock: "critical", needsApproval: "high" },
 };
 
 export function loadConfig(repo: string): VibeguideConfig {
@@ -74,6 +85,13 @@ function mergeConfig(base: VibeguideConfig, override: Partial<VibeguideConfig>):
     vulnerability: {
       checkNpmAudit: override.vulnerability?.checkNpmAudit ?? base.vulnerability.checkNpmAudit,
       severity: override.vulnerability?.severity ?? base.vulnerability.severity,
+    },
+    criticalFeatures: override.criticalFeatures ?? base.criticalFeatures,
+    language: override.language ?? base.language,
+    outputFormat: override.outputFormat ?? base.outputFormat,
+    severityThresholds: {
+      deployBlock: override.severityThresholds?.deployBlock ?? base.severityThresholds.deployBlock,
+      needsApproval: override.severityThresholds?.needsApproval ?? base.severityThresholds.needsApproval,
     },
   };
 }

@@ -2,7 +2,7 @@
 
 [🇻🇳 Tiếng Việt](README.md) | [🇺🇸 English](README_EN.md)
 
-VibeGuide bridges the gap between AI Developer (Claude Code) and Non-Tech Founder to break the endless fix-code loop. It provides 19 MCP tools that help AI understand codebases, assess risks, plan tests, and recommend appropriate Claude Code plugins — all output in plain language.
+VibeGuide bridges the gap between AI Developer (Claude Code) and Non-Tech Founder to break the endless fix-code loop. It provides 20 MCP tools that help AI understand codebases, assess risks, plan tests, and recommend appropriate Claude Code plugins — all output in plain language.
 
 ## Why VibeGuide?
 
@@ -13,7 +13,7 @@ When a Founder says "the Pay button doesn't work", AI Developer usually:
 
 VibeGuide solves all of this.
 
-## 19 Tools
+## 20 Tools
 
 ### Core — Understand the codebase
 - `vibeguide_scan_repo` — Scan repo structure, dependency graph
@@ -44,9 +44,51 @@ VibeGuide solves all of this.
 
 ### Session Tracking — Track working session
 - `vibeguide_session_status` — View current session timeline: status, changed files, snapshot backup, Founder decisions
+- `vibeguide_export_report` — Export session report as Markdown/JSON/Text for Notion/Linear
 
 ### Smart Routing — Recommend Claude Code plugins
 - `vibeguide_smart_route` — Based on situation, recommend plugin + VibeGuide tools. Supports Vietnamese and English. Auto-detects installed plugins.
+
+## Configuration (`.vibeguide.json`)
+
+Create `.vibeguide.json` in repo root to customize:
+
+```json
+{
+  "criticalFeatures": ["Payment", "Checkout", "Cart", "Auth"],
+  "language": "en",
+  "outputFormat": "markdown",
+  "severityThresholds": {
+    "deployBlock": "critical",
+    "needsApproval": "high"
+  }
+}
+```
+
+- `criticalFeatures` — AI warns when modifying files related to these features
+- `language` — Output language: `"vi"` or `"en"`
+- `outputFormat` — Default report format: `"json" | "markdown" | "text"`
+- `severityThresholds` — Thresholds for blocking deploy and requiring Founder approval
+
+## GitHub Action
+
+VibeGuide runs CI on every PR (`.github/workflows/vibeguide-check.yml`):
+
+```yaml
+name: VibeGuide Check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check
+      - run: node test-mcp.cjs
+```
 
 ## Installation
 
@@ -78,10 +120,11 @@ Then type `/mcp` in Claude Code to connect.
 ## Testing
 
 ```bash
-node test-mcp.cjs          # 39 assertions — all tools
+node test-mcp.cjs          # 40 assertions — all tools
 node test-scenario.cjs     # Real-world scenario (payment button)
 node test-future-tools.cjs # Snapshot, diff summary, deploy check
 node test-batch2.cjs       # Suggest fix, changelog, dependency graph
+npm run check              # VibeGuide self-check (dogfooding)
 ```
 
 ## Real-world Workflow

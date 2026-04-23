@@ -2,7 +2,7 @@
 
 [🇻🇳 Tiếng Việt](README.md) | [🇺🇸 English](README_EN.md)
 
-VibeGuide là cầu nối giữa AI Developer (Claude Code) và Non-Tech Founder để ngăn chặn vòng lặp fix-code mãi không dứt. Nó cung cấp 19 công cụ MCP giúp AI hiểu codebase, đánh giá rủi ro, lên kế hoạch test, và đề xuất plugin Claude Code phù hợp — tất cả output bằng tiếng Việt.
+VibeGuide là cầu nối giữa AI Developer (Claude Code) và Non-Tech Founder để ngăn chặn vòng lặp fix-code mãi không dứt. Nó cung cấp 20 công cụ MCP giúp AI hiểu codebase, đánh giá rủi ro, lên kế hoạch test, và đề xuất plugin Claude Code phù hợp — tất cả output bằng tiếng Việt.
 
 ## Tại sao cần VibeGuide?
 
@@ -13,7 +13,7 @@ Khi Founder báo "nút Thanh toán không ăn", AI Developer thường:
 
 VibeGuide giải quyết tất cả.
 
-## 19 Tools
+## 20 Tools
 
 ### Core — Hiểu codebase
 - `vibeguide_scan_repo` — Quét cấu trúc repo, dependency graph
@@ -44,9 +44,51 @@ VibeGuide giải quyết tất cả.
 
 ### Session Tracking — Theo dõi phiên làm việc
 - `vibeguide_session_status` — Xem timeline phiên làm việc hiện tại: trạng thái, file đã sửa, snapshot backup, quyết định của Founder
+- `vibeguide_export_report` — Xuất báo cáo phiên làm việc ra Markdown/JSON/Text, paste vào Notion/Linear
 
 ### Smart Routing — Gợi ý plugin Claude Code
 - `vibeguide_smart_route` — Dựa vào tình huống, recommend plugin + VibeGuide tools phù hợp. Hỗ trợ tiếng Việt và tiếng Anh. Tự động scan plugin đã cài.
+
+## Cấu hình (`.vibeguide.json`)
+
+Tạo file `.vibeguide.json` ở root repo để tùy chỉnh:
+
+```json
+{
+  "criticalFeatures": ["Thanh toán", "Giỏ hàng", "Payment", "Checkout"],
+  "language": "vi",
+  "outputFormat": "markdown",
+  "severityThresholds": {
+    "deployBlock": "critical",
+    "needsApproval": "high"
+  }
+}
+```
+
+- `criticalFeatures` — AI sẽ cảnh báo nếu sửa file liên quan đến feature này
+- `language` — Ngôn ngữ output: `"vi"` hoặc `"en"`
+- `outputFormat` — Format mặc định cho report: `"json" | "markdown" | "text"`
+- `severityThresholds` — Ngưỡng block deploy và cần Founder approve
+
+## GitHub Action
+
+VibeGuide tự động chạy CI trên mỗi PR (`.github/workflows/vibeguide-check.yml`):
+
+```yaml
+name: VibeGuide Check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check
+      - run: node test-mcp.cjs
+```
 
 ## Cài đặt
 
@@ -78,10 +120,11 @@ Sau đó trong Claude Code gõ `/mcp` để kết nối.
 ## Kiểm thử
 
 ```bash
-node test-mcp.cjs          # 39 assertions — tất cả tools
+node test-mcp.cjs          # 40 assertions — tất cả tools
 node test-scenario.cjs     # Scenario thực tế (payment button)
 node test-future-tools.cjs # Snapshot, diff summary, deploy check
 node test-batch2.cjs       # Suggest fix, changelog, dependency graph
+npm run check              # VibeGuide self-check (dogfooding)
 ```
 
 ## Workflow thực tế

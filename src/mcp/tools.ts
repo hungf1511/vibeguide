@@ -19,6 +19,7 @@ import {
   handleDepGraph,
   handleSmartRoute,
   handleSessionStatus,
+  handleExportReport,
 } from "./handlers/index.js";
 import { logEvent } from "../utils/sessionContext.js";
 
@@ -104,6 +105,11 @@ const schemas: Record<string, z.ZodTypeAny> = {
   vibeguide_session_status: z.object({
     repoPath: repoPathSchema,
   }),
+  vibeguide_export_report: z.object({
+    repoPath: repoPathSchema,
+    format: z.enum(["markdown", "json", "text"]).optional().describe("Output format: markdown, json, or text. Defaults to config outputFormat."),
+    saveToFile: z.boolean().optional().describe("Save report to file in repo directory. Default false."),
+  }),
 };
 
 const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
@@ -126,6 +132,7 @@ const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   vibeguide_dependency_graph: handleDepGraph as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_smart_route: handleSmartRoute as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_session_status: handleSessionStatus as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_export_report: handleExportReport as unknown as (args: unknown) => Promise<unknown>,
 };
 
 export function registerTools(): { name: string; description: string; inputSchema: unknown }[] {
@@ -239,6 +246,7 @@ function getToolDescription(name: string): string {
     vibeguide_changelog: "Generate Vietnamese changelog from git history.",
     vibeguide_dependency_graph: "Export dependency graph as Mermaid markdown or JSON.",
     vibeguide_smart_route: "Smart routing: detect situation and recommend plugins/tools.",
+    vibeguide_export_report: "Export session timeline as Markdown, JSON, or text report.",
   };
   return descriptions[name] || "";
 }

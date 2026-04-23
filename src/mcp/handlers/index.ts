@@ -18,4 +18,5 @@ export {
   handleDepGraph,
   handleSmartRoute,
   handleSessionStatus,
+  handleExportReport,
 } from "./handlers.js";

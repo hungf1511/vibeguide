@@ -40,7 +40,7 @@ async function runTests() {
   // ─── TEST 1: Liệt kê tools ─────────────────────────────────
   console.log('--- TEST 1: tools/list ---');
   const tools = await client.listTools();
-  assert(tools.tools.length === 19, `Có đúng 19 tools (hiện có: ${tools.tools.length})`);
+  assert(tools.tools.length === 20, `Có đúng 20 tools (hiện có: ${tools.tools.length})`);
   assert(tools.tools.some(t => t.name === 'vibeguide_impact'), 'Có tool vibeguide_impact');
   assert(tools.tools.some(t => t.name === 'vibeguide_scan_repo'), 'Có tool vibeguide_scan_repo');
   assert(tools.tools.some(t => t.name === 'vibeguide_suggest_fix'), 'Có tool vibeguide_suggest_fix');
@@ -48,6 +48,7 @@ async function runTests() {
   assert(tools.tools.some(t => t.name === 'vibeguide_dependency_graph'), 'Có tool vibeguide_dependency_graph');
   assert(tools.tools.some(t => t.name === 'vibeguide_smart_route'), 'Có tool vibeguide_smart_route');
   assert(tools.tools.some(t => t.name === 'vibeguide_session_status'), 'Có tool vibeguide_session_status');
+  assert(tools.tools.some(t => t.name === 'vibeguide_export_report'), 'Có tool vibeguide_export_report');
 
   // ─── TEST 2: Scan repo ─────────────────────────────────────
   console.log('\n--- TEST 2: vibeguide_scan_repo ---');

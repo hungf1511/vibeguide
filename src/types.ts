@@ -174,3 +174,9 @@ export interface SmartRouteTool {
   confidence: number;
   reason: string;
 }
+
+export interface ExportReportResult {
+  report: string;
+  filePath?: string;
+  format: "markdown" | "json" | "text";
+}
