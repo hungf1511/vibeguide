@@ -68,7 +68,8 @@ export function matchPatterns(content: string, filePath: string): { pattern: Bug
 
   for (const pattern of BUG_PATTERNS) {
     for (let i = 0; i < lines.length; i++) {
-      if (pattern.regex.test(lines[i])) {
+      const stripped = stripNoise(lines[i]);
+      if (pattern.regex.test(stripped)) {
         // Context check: skip false-positive missing-try-catch when await
         // is already inside a try/catch block spanning multiple lines.
         if (pattern.id === "missing-try-catch") {
@@ -84,4 +85,18 @@ export function matchPatterns(content: string, filePath: string): { pattern: Bug
   }
 
   return matches;
+}
+
+/** Remove string literals and regex definitions from a line
+ *  so pattern matching doesn't flag text/regex definitions as code usage. */
+function stripNoise(line: string): string {
+  let result = line;
+  // Remove string content: "..." and '...'
+  result = result.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  result = result.replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  // Remove template literal content: `...`
+  result = result.replace(/`(?:[^`\\]|\\.)*`/g, "``");
+  // Remove regex definitions: /pattern/flags (after = or : or ,)
+  result = result.replace(new RegExp("(?:[:=,]\\s*)\\/(?:[^\\/\\\\]|\\\\\\/)*\\/[gimsuy]*", "g"), " /REGEX/");
+  return result;
 }
