@@ -638,7 +638,10 @@ export async function handleDepGraph(args: { repoPath?: string; format?: string 
 
 function getCachedDeps(repo: string): DepGraph {
   const cache = getCache(repo);
-  if (cache?.nodes && cache?.edges) return cache as unknown as DepGraph;
+  // Re-scan if cache has nodes but no edges (stale cache from old scanner)
+  const cachedNodes = cache?.nodes as unknown as string[] | undefined;
+  const cachedEdges = cache?.edges as unknown as DepEdge[] | undefined;
+  if (cachedNodes?.length && cachedEdges?.length) return cache as unknown as DepGraph;
   const deps = scanDependencies(repo);
   setCache(repo, deps as unknown as Record<string, unknown>);
   return deps;

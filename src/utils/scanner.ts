@@ -107,7 +107,16 @@ export function scanDependencies(dir: string): DepGraph {
 
 function resolveImport(fromFile: string, importPath: string, baseDir: string): string | null {
   const fromDir = path.dirname(path.join(baseDir, fromFile));
-  let resolved = path.resolve(fromDir, importPath);
+  // ESM TypeScript: import "./tools.js" → file is actually "./tools.ts"
+  let normalizedPath = importPath;
+  const jsExtensions = [".js", ".jsx", ".mjs", ".cjs"];
+  for (const ext of jsExtensions) {
+    if (normalizedPath.endsWith(ext)) {
+      normalizedPath = normalizedPath.slice(0, -ext.length);
+      break;
+    }
+  }
+  let resolved = path.resolve(fromDir, normalizedPath);
 
   if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
     return path.relative(baseDir, resolved).replace(/\\/g, "/");

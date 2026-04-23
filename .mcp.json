@@ -2,7 +2,7 @@
   "mcpServers": {
     "vibeguide": {
       "command": "node",
-      "args": ["dist/mcp/server.js"]
+      "args": ["C:/Users/User/vibeguide/dist/mcp/server.js"]
     }
   }
 }
