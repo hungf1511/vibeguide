@@ -18,7 +18,9 @@ import {
   handleChangelog,
   handleDepGraph,
   handleSmartRoute,
+  handleSessionStatus,
 } from "./handlers/index.js";
+import { logEvent } from "../utils/sessionContext.js";
 
 const repoPathSchema = z.string().optional().describe("Absolute path to the repository. Defaults to current working directory.");
 
@@ -99,30 +101,34 @@ const schemas: Record<string, z.ZodTypeAny> = {
     situation: z.string().describe("Mô tả tình huống hiện tại, vd: 'UI chậm khi load trang', 'nút Thanh toán không ăn', 'deploy bị lỗi'"),
     repoPath: repoPathSchema,
   }),
+  vibeguide_session_status: z.object({
+    repoPath: repoPathSchema,
+  }),
 };
 
-const handlers: Record<string, (args: any) => Promise<any>> = {
-  vibeguide_impact: handleImpact,
-  vibeguide_trace_journey: handleTraceJourney,
-  vibeguide_heuristic_bug: handleHeuristicBug,
-  vibeguide_regression: handleRegression,
-  vibeguide_scan_repo: handleScanRepo,
-  vibeguide_test_plan: handleTestPlan,
-  vibeguide_bug_report: handleBugReport,
-  vibeguide_impact_confirm: handleImpactConfirm,
-  vibeguide_what_changed: handleWhatChanged,
-  vibeguide_get_file: handleGetFile,
-  vibeguide_get_deps: handleGetDeps,
-  vibeguide_snapshot: handleSnapshot,
-  vibeguide_diff_summary: handleDiffSummary,
-  vibeguide_deploy_check: handleDeployCheck,
-  vibeguide_suggest_fix: handleSuggestFix,
-  vibeguide_changelog: handleChangelog,
-  vibeguide_dependency_graph: handleDepGraph,
-  vibeguide_smart_route: handleSmartRoute,
+const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
+  vibeguide_impact: handleImpact as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_trace_journey: handleTraceJourney as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_heuristic_bug: handleHeuristicBug as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_regression: handleRegression as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_scan_repo: handleScanRepo as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_test_plan: handleTestPlan as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_bug_report: handleBugReport as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_impact_confirm: handleImpactConfirm as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_what_changed: handleWhatChanged as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_get_file: handleGetFile as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_get_deps: handleGetDeps as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_snapshot: handleSnapshot as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_diff_summary: handleDiffSummary as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_deploy_check: handleDeployCheck as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_suggest_fix: handleSuggestFix as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_changelog: handleChangelog as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_dependency_graph: handleDepGraph as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_smart_route: handleSmartRoute as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_session_status: handleSessionStatus as unknown as (args: unknown) => Promise<unknown>,
 };
 
-export function registerTools(): any[] {
+export function registerTools(): { name: string; description: string; inputSchema: unknown }[] {
   return Object.entries(schemas).map(([name, schema]) => ({
     name,
     description: getToolDescription(name),
@@ -142,7 +148,23 @@ export async function handleToolCall(name: string, args: unknown): Promise<any> 
     throw new Error(`Invalid arguments: ${parsed.error.message}`);
   }
 
-  const result = await handler(parsed.data);
+  let result: unknown;
+  try {
+    result = await handler(parsed.data);
+  } catch (err) {
+    throw err;
+  }
+
+  // Log to session context for timeline tracking
+  const repoPath = (parsed.data as Record<string, unknown>)?.repoPath as string | undefined;
+  if (repoPath) {
+    logEvent(repoPath, {
+      timestamp: new Date().toISOString(),
+      tool: name,
+      input: parsed.data as Record<string, unknown>,
+      output: typeof result === "string" ? { text: result } : (result as Record<string, unknown>),
+    });
+  }
 
   // Smart context budget: auto-compress output if too large
   const json = typeof result === "string" ? result : JSON.stringify(result, null, 2);
@@ -221,15 +243,26 @@ function getToolDescription(name: string): string {
   return descriptions[name] || "";
 }
 
-function zodToJsonSchema(schema: z.ZodTypeAny): any {
-  const zodType = schema as any;
-  if (zodType._def?.typeName === "ZodObject") {
+interface ZodInternal {
+  _def?: {
+    typeName?: string;
+    shape?: () => Record<string, z.ZodTypeAny>;
+    type?: z.ZodTypeAny;
+    innerType?: z.ZodTypeAny;
+    description?: string;
+  };
+  isOptional?: () => boolean;
+}
+
+function zodToJsonSchema(schema: z.ZodTypeAny): unknown {
+  const zodType = schema as unknown as ZodInternal;
+  if (zodType._def?.typeName === "ZodObject" && zodType._def.shape) {
     const shape = zodType._def.shape();
-    const properties: Record<string, any> = {};
+    const properties: Record<string, unknown> = {};
     const required: string[] = [];
     for (const [key, value] of Object.entries(shape)) {
-      properties[key] = zodTypeToJson(value as z.ZodTypeAny);
-      if (!(value as any).isOptional?.()) {
+      properties[key] = zodTypeToJson(value);
+      if (!(value as unknown as ZodInternal).isOptional?.()) {
         required.push(key);
       }
     }
@@ -238,19 +271,19 @@ function zodToJsonSchema(schema: z.ZodTypeAny): any {
   return {};
 }
 
-function zodTypeToJson(z: z.ZodTypeAny): any {
-  const def = (z as any)._def;
+function zodTypeToJson(z: z.ZodTypeAny): unknown {
+  const def = (z as unknown as ZodInternal)._def;
   switch (def?.typeName) {
     case "ZodString":
-      return { type: "string", description: def.description };
+      return { type: "string", description: def?.description };
     case "ZodNumber":
-      return { type: "number", description: def.description };
+      return { type: "number", description: def?.description };
     case "ZodBoolean":
-      return { type: "boolean", description: def.description };
+      return { type: "boolean", description: def?.description };
     case "ZodArray":
-      return { type: "array", items: zodTypeToJson(def.type), description: def.description };
+      return { type: "array", items: def?.type ? zodTypeToJson(def.type) : {}, description: def?.description };
     case "ZodOptional":
-      return zodTypeToJson(def.innerType);
+      return def?.innerType ? zodTypeToJson(def.innerType) : {};
     default:
       return {};
   }

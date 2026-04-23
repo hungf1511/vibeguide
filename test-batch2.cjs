@@ -28,10 +28,10 @@ async function run() {
   const repo = '.';
 
   // --- TEST suggest_fix ---
-  console.log(`${CYAN}[TEST]${RESET} vibeguide_suggest_fix (any-type at src/mcp/server.ts:32)`);
+  console.log(`${CYAN}[TEST]${RESET} vibeguide_suggest_fix (any-type at src/hooks/useCart.ts:6)`);
   const fix = await client.callTool({
     name: 'vibeguide_suggest_fix',
-    arguments: { filePath: 'src/mcp/server.ts', patternId: 'any-type', line: 32, repoPath: repo }
+    arguments: { filePath: 'src/hooks/useCart.ts', patternId: 'any-type', line: 6, repoPath: 'C:/Users/User/vibeguide-test-project' }
   });
   const fixResult = JSON.parse(fix.content[0].text);
   assert(fixResult.suggestions && fixResult.suggestions.length > 0, 'Có ít nhất 1 suggestion');

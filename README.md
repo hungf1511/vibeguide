@@ -2,7 +2,7 @@
 
 [🇻🇳 Tiếng Việt](README.md) | [🇺🇸 English](README_EN.md)
 
-VibeGuide là cầu nối giữa AI Developer (Claude Code) và Non-Tech Founder để ngăn chặn vòng lặp fix-code mãi không dứt. Nó cung cấp 18 công cụ MCP giúp AI hiểu codebase, đánh giá rủi ro, lên kế hoạch test, và đề xuất plugin Claude Code phù hợp — tất cả output bằng tiếng Việt.
+VibeGuide là cầu nối giữa AI Developer (Claude Code) và Non-Tech Founder để ngăn chặn vòng lặp fix-code mãi không dứt. Nó cung cấp 19 công cụ MCP giúp AI hiểu codebase, đánh giá rủi ro, lên kế hoạch test, và đề xuất plugin Claude Code phù hợp — tất cả output bằng tiếng Việt.
 
 ## Tại sao cần VibeGuide?
 
@@ -13,7 +13,7 @@ Khi Founder báo "nút Thanh toán không ăn", AI Developer thường:
 
 VibeGuide giải quyết tất cả.
 
-## 18 Tools
+## 19 Tools
 
 ### Core — Hiểu codebase
 - `vibeguide_scan_repo` — Quét cấu trúc repo, dependency graph
@@ -42,6 +42,9 @@ VibeGuide giải quyết tất cả.
 - `vibeguide_diff_summary` — Tóm tắt thay đổi code cho non-tech user
 - `vibeguide_what_changed` — Xem commits/files/thay đổi gần đây
 
+### Session Tracking — Theo dõi phiên làm việc
+- `vibeguide_session_status` — Xem timeline phiên làm việc hiện tại: trạng thái, file đã sửa, snapshot backup, quyết định của Founder
+
 ### Smart Routing — Gợi ý plugin Claude Code
 - `vibeguide_smart_route` — Dựa vào tình huống, recommend plugin + VibeGuide tools phù hợp. Hỗ trợ tiếng Việt và tiếng Anh. Tự động scan plugin đã cài.
 
@@ -52,6 +55,7 @@ git clone https://github.com/hungf1511/vibeguide.git
 cd vibeguide
 npm install
 npm run build
+npm run check  # VibeGuide tự quét chính nó — dogfooding
 ```
 
 ## Kết nối với Claude Code
@@ -74,9 +78,10 @@ Sau đó trong Claude Code gõ `/mcp` để kết nối.
 ## Kiểm thử
 
 ```bash
-node test-mcp.cjs          # 35 assertions
-node test-wipter-scenario.cjs  # Scenario thực tế
-node test-batch2.cjs        # Batch 2 tools
+node test-mcp.cjs          # 39 assertions — tất cả tools
+node test-scenario.cjs     # Scenario thực tế (payment button)
+node test-future-tools.cjs # Snapshot, diff summary, deploy check
+node test-batch2.cjs       # Suggest fix, changelog, dependency graph
 ```
 
 ## Workflow thực tế
@@ -92,6 +97,7 @@ Founder: "Nút Thanh toán không ăn"
 [Dev] vibeguide_test_plan → 6 bước test cho Founder
 [Dev] vibeguide_snapshot → backup trước khi sửa
 [Founder test → Pass]
+[Dev] vibeguide_session_status → Founder xem tổng kết phiên làm việc
 [Dev] vibeguide_deploy_check → kiểm tra trước deploy
 [Deploy thành công]
 ```
@@ -101,8 +107,9 @@ Founder: "Nút Thanh toán không ăn"
 - TypeScript + ESM
 - MCP SDK (@modelcontextprotocol/sdk)
 - Zod schemas
-- No database — JSON file cache
+- No database — JSON file cache + JSON session tracking
 - SHA-256 snapshots
+- Dogfooding: `npm run check` tự quét chính nó bằng VibeGuide
 
 ## License
 

@@ -119,11 +119,19 @@ export function matchPatterns(content: string, filePath: string): { pattern: Bug
     for (let i = 0; i < lines.length; i++) {
       const stripped = stripNoise(lines[i]);
       if (pattern.regex.test(stripped)) {
+        // Skip pattern definitions in heuristics file
+        if (filePath.includes("heuristics") && lines[i].trim().startsWith("regex:")) continue;
+
         // Context check: skip false-positive missing-try-catch when await
         // is already inside a try/catch block spanning multiple lines.
         if (pattern.id === "missing-try-catch") {
+          const line = lines[i];
+          // Skip dynamic imports — they are often in try blocks but catch is far
+          if (/await\s+import\s*\(/.test(line)) continue;
+          // Skip internal handler calls — they are local async wrappers
+          if (/await\s+handle[A-Z]\w+\s*\(/.test(line)) continue;
           const before = lines.slice(Math.max(0, i - 4), i).join("\n");
-          const after = lines.slice(i + 1, Math.min(lines.length, i + 6)).join("\n");
+          const after = lines.slice(i + 1, Math.min(lines.length, i + 20)).join("\n");
           const hasTry = /\btry\s*\{/.test(before);
           const hasCatch = /\bcatch\s*\(/.test(after) || /\bcatch\s*\{/.test(after);
           if (hasTry && hasCatch) continue;

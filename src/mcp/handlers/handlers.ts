@@ -29,6 +29,7 @@ import { generateChangelog } from "../../utils/changelog.js";
 import { discoverInstalledPlugins, recommendPluginsForSituation } from "../../utils/pluginDiscovery.js";
 import { loadConfig, detectFramework, getEntryPointPatterns, shouldIgnore } from "../../utils/configLoader.js";
 import { checkKnownVulnerabilities } from "../../utils/vulnerabilityScanner.js";
+import { getSession, getTimeline, generateProgressSummary } from "../../utils/sessionContext.js";
 
 export async function handleImpact(args: { filePath: string; repoPath?: string }): Promise<ImpactResult> {
   const repo = resolveRepo(args.repoPath);
@@ -776,5 +777,19 @@ export async function handleSmartRoute(args: { situation: string; repoPath?: str
       reason: t.reason,
     })),
     summary: summaryParts.join("\n"),
+  };
+}
+
+export async function handleSessionStatus(args: { repoPath?: string }): Promise<{ summary: string; timeline: string[]; status: string; snapshotId?: string; lastAction?: string }> {
+  const repo = resolveRepo(args.repoPath);
+  const ctx = getSession(repo);
+  const timeline = getTimeline(ctx);
+  const summary = generateProgressSummary(ctx);
+  return {
+    summary,
+    timeline,
+    status: ctx.status,
+    snapshotId: ctx.snapshotId,
+    lastAction: ctx.lastAction,
   };
 }

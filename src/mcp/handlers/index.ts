@@ -17,4 +17,5 @@ export {
   handleChangelog,
   handleDepGraph,
   handleSmartRoute,
+  handleSessionStatus,
 } from "./handlers.js";
