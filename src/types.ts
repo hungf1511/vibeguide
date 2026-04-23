@@ -23,6 +23,16 @@ export interface ImpactResult {
   features: string[];
   rollbackTime: string;
   needsApproval: boolean;
+  /** Hierarchical view for large repos — grouped by module instead of raw file list */
+  hierarchical?: HierarchicalImpact;
+  /** Entry points (routes/pages) at risk from this change */
+  entryPointsAtRisk?: string[];
+}
+
+export interface HierarchicalImpact {
+  direct: { count: number; topFiles: string[]; modules: Record<string, number> };
+  indirect: { count: number; modules: Record<string, number> };
+  summary: string;
 }
 
 export interface AffectedFile {

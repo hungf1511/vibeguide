@@ -9,6 +9,7 @@ import type {
   ChangeLog,
   TreeNode,
   DepGraph,
+  DepEdge,
   SnapshotResult,
   DiffSummaryResult,
   DeployCheckResult,
@@ -50,7 +51,73 @@ export async function handleImpact(args: { filePath: string; repoPath?: string }
   }
 
   const risk: ImpactResult["risk"] = direct.length > 5 ? "high" : direct.length > 1 ? "medium" : "low";
-  return { filePath: args.filePath, risk, affectedFiles: direct, indirectFiles: indirect, features: Array.from(features), rollbackTime: `${(direct.length + indirect.length) * 10}s`, needsApproval: risk === "high" };
+
+  // Hierarchical grouping for large repos
+  const hierarchical = buildHierarchicalImpact(direct, indirect);
+  const entryPointsAtRisk = findEntryPoints(direct, indirect, deps.edges);
+
+  return {
+    filePath: args.filePath,
+    risk,
+    affectedFiles: direct.slice(0, 10),
+    indirectFiles: indirect.slice(0, 10),
+    features: Array.from(features),
+    rollbackTime: `${(direct.length + indirect.length) * 10}s`,
+    needsApproval: risk === "high",
+    hierarchical,
+    entryPointsAtRisk: entryPointsAtRisk.slice(0, 10),
+  };
+}
+
+function buildHierarchicalImpact(direct: ImpactResult["affectedFiles"], indirect: ImpactResult["indirectFiles"]): import("../../types.js").HierarchicalImpact {
+  const directModules: Record<string, number> = {};
+  for (const d of direct) {
+    const mod = d.file.split("/")[0] || "root";
+    directModules[mod] = (directModules[mod] || 0) + 1;
+  }
+  const indirectModules: Record<string, number> = {};
+  for (const i of indirect) {
+    const mod = i.file.split("/")[0] || "root";
+    indirectModules[mod] = (indirectModules[mod] || 0) + 1;
+  }
+  return {
+    direct: {
+      count: direct.length,
+      topFiles: direct.slice(0, 5).map((d) => d.file),
+      modules: directModules,
+    },
+    indirect: {
+      count: indirect.length,
+      modules: indirectModules,
+    },
+    summary: direct.length > 20
+      ? `Rất nhiều file bị ảnh hưởng trực tiếp (${direct.length}). Cần review module ${Object.entries(directModules).sort((a, b) => b[1] - a[1])[0]?.[0] || ""} trước.`
+      : direct.length > 5
+        ? `Nhiều file bị ảnh hưởng (${direct.length}). Risk ${direct.length > 10 ? "cao" : "trung bình"}.`
+        : `Ảnh hưởng ${direct.length} file trực tiếp, ${indirect.length} file gián tiếp.`,
+  };
+}
+
+function findEntryPoints(direct: ImpactResult["affectedFiles"], indirect: ImpactResult["indirectFiles"], edges: DepEdge[]): string[] {
+  const impacted = new Set([...direct.map((d) => d.file), ...indirect.map((i) => i.file)]);
+  const entryPoints: string[] = [];
+  const entryPatterns = /\/(pages|app|routes|views|screens)\/|index\.(tsx?|jsx?|vue)$|App\.(tsx?|jsx?|vue)$|main\.(tsx?|jsx?|ts)$/i;
+  for (const file of impacted) {
+    if (entryPatterns.test(file)) entryPoints.push(file);
+  }
+  // If no direct entry points, trace upstream via edges
+  if (entryPoints.length === 0) {
+    const upstream = new Set<string>();
+    for (const edge of edges) {
+      if (impacted.has(edge.from) && edgePatterns(edge.to)) upstream.add(edge.to);
+    }
+    entryPoints.push(...Array.from(upstream));
+  }
+  return entryPoints;
+}
+
+function edgePatterns(file: string): boolean {
+  return /\/(pages|app|routes|views|screens)\/|index\.(tsx?|jsx?|vue)$|App\.(tsx?|jsx?|vue)$|main\.(tsx?|jsx?|ts)$/i.test(file);
 }
 
 export async function handleTraceJourney(args: { journey: string; repoPath?: string }): Promise<{ steps: string[]; files: string[]; confidence: number }> {
@@ -72,7 +139,7 @@ export async function handleTraceJourney(args: { journey: string; repoPath?: str
   return { steps, files: topFiles, confidence: matches.length > 0 ? Math.min(1, matches[0].score / 5) : 0 };
 }
 
-export async function handleHeuristicBug(args: { symptom: string; repoPath?: string }): Promise<{ matches: BugMatch[]; suspiciousFiles: string[] }> {
+export async function handleHeuristicBug(args: { symptom: string; repoPath?: string }): Promise<{ summary: string; patternCounts: Record<string, number>; matches: BugMatch[]; suspiciousFiles: string[]; totalScanned: number }> {
   const repo = resolveRepo(args.repoPath);
   const deps = getCachedDeps(repo);
   const keywords = args.symptom.toLowerCase().split(/\s+/).filter((k) => k.length > 2);
@@ -100,7 +167,22 @@ export async function handleHeuristicBug(args: { symptom: string; repoPath?: str
     }
   }
   matches.sort((a, b) => b.score - a.score);
-  return { matches, suspiciousFiles: suspicious };
+
+  // Group by pattern for summary
+  const patternCounts: Record<string, number> = {};
+  for (const m of matches) {
+    patternCounts[m.pattern] = (patternCounts[m.pattern] || 0) + 1;
+  }
+
+  const topMatches = matches.slice(0, 10);
+
+  return {
+    summary: `Scan ${filesToScan.length} file, phát hiện ${matches.length} bug pattern (${Object.keys(patternCounts).length} loại). Nghiêm trọng nhất: ${matches[0]?.pattern || "N/A"} ở ${matches[0]?.file || ""}.`,
+    patternCounts,
+    matches: topMatches,
+    suspiciousFiles: suspicious.slice(0, 10),
+    totalScanned: filesToScan.length,
+  };
 }
 
 export async function handleRegression(args: { changedFiles: string[]; repoPath?: string }): Promise<RegressionResult> {
@@ -110,12 +192,28 @@ export async function handleRegression(args: { changedFiles: string[]; repoPath?
   return { testFlows: flows, passed: flows.every((f) => f.passed) };
 }
 
-export async function handleScanRepo(args: { repoPath?: string }): Promise<{ structure: TreeNode[]; edges: DepGraph["edges"]; stats: { totalFiles: number; totalFolders: number } }> {
+export async function handleScanRepo(args: { repoPath?: string }): Promise<{ summary: string; fileTypes: Record<string, number>; topLevelFolders: string[]; edges: DepGraph["edges"]; stats: { totalFiles: number; totalFolders: number } }> {
   const repo = resolveRepo(args.repoPath);
   const structure = scanDirectory(repo);
   const stats = countTree(structure);
   const deps = getCachedDeps(repo);
-  return { structure, edges: deps.edges, stats: { totalFiles: stats.files, totalFolders: stats.folders } };
+
+  // Group by file extension for summary
+  const fileTypes: Record<string, number> = {};
+  for (const node of deps.nodes) {
+    const ext = path.extname(node) || "no-ext";
+    fileTypes[ext] = (fileTypes[ext] || 0) + 1;
+  }
+
+  const topLevelFolders = structure.filter((n) => n.type === "folder").map((n) => n.name);
+
+  return {
+    summary: `Repo có ${stats.files} file, ${stats.folders} folder. Nhiều nhất: ${Object.entries(fileTypes).sort((a, b) => b[1] - a[1])[0]?.join(" ") || "N/A"}.`,
+    fileTypes,
+    topLevelFolders,
+    edges: deps.edges.slice(0, 50),
+    stats: { totalFiles: stats.files, totalFolders: stats.folders },
+  };
 }
 
 export async function handleTestPlan(args: { feature: string; repoPath?: string }): Promise<TestPlan> {
