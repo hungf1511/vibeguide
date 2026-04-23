@@ -48,7 +48,7 @@ VibeGuide giải quyết tất cả.
 ## Cài đặt
 
 ```bash
-git clone https://github.com/<user>/vibeguide.git
+git clone https://github.com/hungf1511/vibeguide.git
 cd vibeguide
 npm install
 npm run build
