@@ -15,6 +15,12 @@ import {
   handleTestCoverage,
   handleTypeCheck,
   handleDocGap,
+  handleDepGraph,
+  handleDiffSummary,
+  handleGetDeps,
+  handleGetFile,
+  handleScanRepo,
+  handleSnapshot,
 } from "../src/mcp/handlers/index.js";
 import { handleToolCall } from "../src/mcp/tools.js";
 import { compressOutput } from "../src/mcp/toolOutput.js";
@@ -133,6 +139,45 @@ describe("reporting and quality tools", () => {
 
     write("package.json", "{ invalid json");
     expect(checkKnownVulnerabilities(repo)).toEqual([]);
+  });
+
+  it("covers repo exploration handlers and snapshot diff branches", async () => {
+    write("src/helper.ts", "export const helper = 1;\n");
+    write("src/index.ts", "import { helper } from './helper';\nexport const value = helper;\n");
+    git(["add", "."]);
+    git(["commit", "-m", "add helper"]);
+
+    const scan = await handleScanRepo({ repoPath: repo });
+    expect(scan.stats.totalFiles).toBeGreaterThan(0);
+
+    const scoped = await handleScanRepo({ repoPath: repo, scope: { paths: ["src"] } });
+    expect(scoped.summary).toContain("Scope");
+
+    expect((await handleGetFile({ repoPath: repo, filePath: "src/index.ts" })).content).toContain("helper");
+    expect((await handleGetFile({ repoPath: repo, filePath: "missing.ts" })).content).toBeNull();
+    write("src/large.ts", "x".repeat(60000));
+    expect((await handleGetFile({ repoPath: repo, filePath: "src/large.ts" })).truncated).toBe(true);
+
+    const deps = await handleGetDeps({ repoPath: repo });
+    expect(deps.nodes.length).toBeGreaterThan(0);
+    expect((await handleDepGraph({ repoPath: repo })).mermaid).toContain("graph TD");
+    expect((await handleDepGraph({ repoPath: repo, format: "json" })).mermaid).toContain("\"nodes\"");
+
+    const created = await handleSnapshot({ repoPath: repo, label: "before-change" });
+    write("src/new.ts", "export const added = 1;\n");
+    write("src/index.ts", "export const changed = true;\n");
+
+    const snapshotDiff = await handleDiffSummary({ repoPath: repo, since: "snapshot", snapshotId: created.snapshotId });
+    expect(snapshotDiff.totalFiles).toBeGreaterThan(0);
+    expect((await handleDiffSummary({ repoPath: repo, since: "last" })).totalFiles).toBeGreaterThan(0);
+    await expect(handleDiffSummary({ repoPath: repo, since: "snapshot", snapshotId: "missing" })).rejects.toThrow("Snapshot not found");
+
+    const list = await handleSnapshot({ repoPath: repo, action: "list" });
+    expect(list.snapshots?.length).toBeGreaterThan(0);
+    const restored = await handleSnapshot({ repoPath: repo, action: "restore", snapshotId: created.snapshotId });
+    expect(restored.restored).toBe(true);
+    await expect(handleSnapshot({ repoPath: repo, action: "restore" })).rejects.toThrow("snapshotId required");
+    await expect(handleSnapshot({ repoPath: repo, action: "unknown" })).rejects.toThrow("Unknown action");
   });
 
   it("covers git diff and blame helpers", () => {
