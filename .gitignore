@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 cache/
+docs/plans/
 *.log
 *.tmp
 .DS_Store
