@@ -4,7 +4,7 @@ import * as crypto from "crypto";
 import type { TreeNode, DepGraph, DepEdge } from "../types.js";
 
 const EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".vue", ".py", ".go", ".rs"]);
-const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", "coverage"]);
+const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", "cache", "coverage"]);
 
 export function scanDirectory(dir: string): TreeNode[] {
   const result: TreeNode[] = [];

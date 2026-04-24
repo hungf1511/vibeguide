@@ -224,18 +224,27 @@ export async function handleRegression(args: { changedFiles: string[]; repoPath?
   return { testFlows: flows, passed: flows.every((f) => f.passed) };
 }
 
-export async function handleScanRepo(args: { repoPath?: string }): Promise<{ summary: string; fileTypes: Record<string, number>; topLevelFolders: string[]; edges: DepGraph["edges"]; stats: { totalFiles: number; totalFolders: number }; git: { branch: string; modified: number; ahead: number } }> {
+export async function handleScanRepo(args: { repoPath?: string }): Promise<{ summary: string; fileTypes: Record<string, number>; topLevelFolders: string[]; edges: DepGraph["edges"]; stats: { totalFiles: number; totalFolders: number }; git: { branch: string; modified: number; ahead: number }; files: string[] }> {
   const repo = resolveRepo(args.repoPath);
   const structure = scanDirectory(repo);
   const stats = countTree(structure);
   const deps = getCachedDeps(repo);
 
-  // Group by file extension for summary
+  // Collect all files from tree for accurate stats
+  const allFiles: string[] = [];
   const fileTypes: Record<string, number> = {};
-  for (const node of deps.nodes) {
-    const ext = path.extname(node) || "no-ext";
-    fileTypes[ext] = (fileTypes[ext] || 0) + 1;
+  function walkTree(nodes: TreeNode[]) {
+    for (const node of nodes) {
+      if (node.type === "file") {
+        allFiles.push(node.path);
+        const ext = path.extname(node.name) || "no-ext";
+        fileTypes[ext] = (fileTypes[ext] || 0) + 1;
+      } else if (node.children) {
+        walkTree(node.children);
+      }
+    }
   }
+  walkTree(structure);
 
   const topLevelFolders = structure.filter((n) => n.type === "folder").map((n) => n.name);
 
@@ -248,6 +257,7 @@ export async function handleScanRepo(args: { repoPath?: string }): Promise<{ sum
     edges: deps.edges.slice(0, 50),
     stats: { totalFiles: stats.files, totalFolders: stats.folders },
     git: { branch: gitStatus.branch, modified: gitStatus.modified.length, ahead: gitStatus.ahead },
+    files: allFiles.slice(0, 100),
   };
 }
 
