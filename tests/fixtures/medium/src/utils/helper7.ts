@@ -1,0 +1,1 @@
+export const helper7 = () => i;
