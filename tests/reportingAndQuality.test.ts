@@ -18,6 +18,8 @@ import {
 } from "../src/mcp/handlers/index.js";
 import { handleToolCall } from "../src/mcp/tools.js";
 import { compressOutput } from "../src/mcp/toolOutput.js";
+import { generateSuggestion } from "../src/utils/fixSuggestions.js";
+import { checkKnownVulnerabilities } from "../src/utils/vulnerabilityScanner.js";
 import { getTestCoverage } from "../src/utils/testCoverage.js";
 import { findI18nGap } from "../src/utils/i18nGap.js";
 import { findDocGaps } from "../src/utils/docGap.js";
@@ -86,6 +88,51 @@ describe("reporting and quality tools", () => {
     const docs = findDocGaps(repo);
     expect(docs.exportsMissingJsdoc.length).toBeGreaterThan(0);
     expect((await handleDocGap({ repoPath: repo })).summary).toContain("export");
+  });
+
+  it("generates concrete fix suggestions for supported bug patterns", () => {
+    const content = [
+      "const response = fetch('/api/items');",
+      "await fetch('/api/items');",
+      "console.log('debug');",
+      "const token = '1234567890abcdef';",
+      "function parse(input: any) { return input; }",
+      "// TODO: clean this",
+      "db.query(`select * from users where id = ${id}`);",
+      "const data = eval(raw);",
+    ].join("\n");
+
+    expect(generateSuggestion(content, "unawaited-fetch", 1)?.fixed).toContain("await fetch");
+    expect(generateSuggestion(content, "missing-try-catch", 2)?.fixed).toContain("try");
+    expect(generateSuggestion(content, "console-log", 3)?.fixed).toContain("Removed console");
+    expect(generateSuggestion(content, "hardcoded-secret", 4)?.fixed).toContain("process.env.SECRET_KEY");
+    expect(generateSuggestion(content, "any-type", 5)?.fixed).toContain(": unknown");
+    expect(generateSuggestion(content, "todo-fixme", 6)?.fixed).toContain("Resolved");
+    expect(generateSuggestion(content, "sql-injection", 7)?.fixed).toContain("parameterized query");
+    expect(generateSuggestion(content, "eval-usage", 8)?.fixed).toContain("JSON.parse");
+    expect(generateSuggestion(content, "missing", 1)).toBeNull();
+    expect(generateSuggestion(content, "unawaited-fetch", 99)).toBeNull();
+    expect(generateSuggestion("fetch('/x')", "unawaited-fetch", 1)).toBeNull();
+  });
+
+  it("flags known vulnerable dependency versions", () => {
+    write("package.json", JSON.stringify({
+      dependencies: {
+        lodash: "^4.17.20",
+        axios: "0.21.1",
+      },
+      devDependencies: {
+        minimist: "~1.2.5",
+        express: "4.18.0",
+      },
+    }));
+
+    const findings = checkKnownVulnerabilities(repo);
+    expect(findings.map((f) => f.package)).toEqual(["lodash", "minimist"]);
+    expect(findings[0].cve).toBe("CVE-2021-23337");
+
+    write("package.json", "{ invalid json");
+    expect(checkKnownVulnerabilities(repo)).toEqual([]);
   });
 
   it("covers git diff and blame helpers", () => {
