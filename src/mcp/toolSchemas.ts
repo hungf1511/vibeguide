@@ -138,4 +138,14 @@ export const schemas: Record<string, z.ZodTypeAny> = {
   vibeguide_meeting_notes: z.object({
     repoPath: repoPathSchema,
   }),
+  vibeguide_git_status: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_git_log: z.object({
+    repoPath: repoPathSchema,
+    count: z.number().optional().default(20).describe("Number of commits to return. Default 20."),
+    since: z.string().optional().describe("Show commits more recent than a specific date (ISO 8601)."),
+    until: z.string().optional().describe("Show commits older than a specific date (ISO 8601)."),
+    showFiles: z.boolean().optional().default(false).describe("Include changed files per commit. Default false."),
+  }),
 };

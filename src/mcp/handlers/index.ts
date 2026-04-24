@@ -53,3 +53,7 @@ export {
   handleFounderBrief,
   handleMeetingNotes,
 } from "./briefing.js";
+export {
+  handleGitStatus,
+  handleGitLog,
+} from "./git.js";

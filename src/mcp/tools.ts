@@ -34,6 +34,8 @@ import {
   handleReviewPr,
   handleFounderBrief,
   handleMeetingNotes,
+  handleGitStatus,
+  handleGitLog,
 } from "./handlers/index.js";
 import { logEvent } from "../utils/sessionContext.js";
 import { getToolDescription } from "./toolDescriptions.js";
@@ -76,6 +78,8 @@ const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   vibeguide_review_pr: handleReviewPr as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_founder_brief: handleFounderBrief as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_meeting_notes: handleMeetingNotes as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_git_status: handleGitStatus as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_git_log: handleGitLog as unknown as (args: unknown) => Promise<unknown>,
 };
 
 export function registerTools(): { name: string; description: string; inputSchema: unknown }[] {
