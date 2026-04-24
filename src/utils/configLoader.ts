@@ -127,18 +127,24 @@ export function getEntryPointPatterns(repo: string, config: VibeguideConfig): Re
 }
 
 export function shouldIgnore(filePath: string, patterns: string[]): boolean {
+  const normalized = filePath.replace(/\\/g, "/");
   for (const pattern of patterns) {
-    const regex = new RegExp(
-      "^" +
-        pattern
-          .replace(/\*\*/g, "::DS::")
-          .replace(/\*/g, "[^/]*")
-          .replace(/::DS::/g, ".*")
-          .replace(/\./g, "\\.") +
-        "$",
-      "i"
-    );
-    if (regex.test(filePath)) return true;
+    const normalizedPattern = pattern.replace(/\\/g, "/");
+    const hasGlob = normalizedPattern.includes("*");
+    if (!hasGlob && (normalized === normalizedPattern || normalized.startsWith(normalizedPattern + "/"))) return true;
+
+    const regex = globToRegex(normalizedPattern);
+    if (regex.test(normalized)) return true;
+    if (!normalizedPattern.includes("/") && regex.test(path.basename(normalized))) return true;
   }
   return false;
+}
+
+function globToRegex(pattern: string): RegExp {
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*\*/g, "::DOUBLE_STAR::")
+    .replace(/\*/g, "[^/]*")
+    .replace(/::DOUBLE_STAR::/g, ".*");
+  return new RegExp("^" + escaped + "$", "i");
 }

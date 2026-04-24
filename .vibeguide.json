@@ -1,6 +1,6 @@
 {
   "framework": "auto",
-  "ignorePatterns": ["*.test.ts", "*.spec.ts", "__tests__/**", "*.d.ts"],
+  "ignorePatterns": ["*.test.ts", "*.spec.ts", "__tests__/**", "*.d.ts", "test-project", "test-project/**", "test-*.cjs", "scripts", "scripts/**"],
   "entryPoints": {
     "nextjs": ["page.tsx", "page.ts", "page.jsx", "page.js", "layout.tsx", "layout.ts", "layout.jsx", "layout.js", "route.ts", "route.tsx"],
     "remix": ["route.tsx", "route.ts", "route.jsx", "route.js"],

@@ -1,96 +1,237 @@
-# VibeGuide — MCP Server for AI Developer & Non-Tech Founder
+# VibeGuide — MCP Server for AI Developers and Non-Technical Founders
 
-[🇻🇳 Tiếng Việt](README.md) | [🇺🇸 English](README_EN.md)
+[Tiếng Việt](README.md) | [English](README_EN.md)
 
-VibeGuide bridges the gap between AI Developer (Claude Code) and Non-Tech Founder to break the endless fix-code loop. It provides 34 MCP tools that help AI understand codebases, assess risks, plan tests, and recommend appropriate Claude Code plugins — all output in plain language.
+VibeGuide is an MCP server that helps AI coding assistants such as Codex or Claude Code understand a codebase before changing it. Instead of guessing, the assistant can scan the repo, find bug patterns, analyze impact, create snapshots, run pre-deploy checks, and produce plain-language reports for non-technical users.
 
-## Why VibeGuide?
+The project currently provides 34 MCP tools, is written in TypeScript, runs locally, and does not require a database.
 
-When a Founder says "the Pay button doesn't work", AI Developer usually:
-- Guesses a fix → test fails → fix again → repeat endlessly
-- Doesn't know the impact of changes on other features
-- Has no clear test plan for the Founder to verify
+## What VibeGuide Solves
 
-VibeGuide solves all of this.
+When a Founder says "the Pay button does not work", AI Developers usually face three risks:
 
-## 34 Tools
+- Guessing a fix, failing the test, then repeating the same loop.
+- Not knowing which features are affected by a file change.
+- Not having a clear test plan for Founder approval before deploy.
 
-### Core — Understand the codebase
-- `vibeguide_scan_repo` — Scan repo structure, dependency graph
-- `vibeguide_get_deps` — Extract dependency graph
-- `vibeguide_get_file` — Read file safely (path traversal protection)
-- `vibeguide_dependency_graph` — Export dependencies as Mermaid diagram
-- `vibeguide_trace_journey` — Trace user journey through the codebase
+VibeGuide turns vague bug reports into a concrete workflow: scan → trace → impact → snapshot → fix → review → deploy check.
 
-### Bug Detection — Find bugs before fixing
-- `vibeguide_heuristic_bug` — Scan bug patterns (unawaited-fetch, missing-try-catch, console-log, hardcoded-secret, any-type, sql-injection, eval-usage)
-- `vibeguide_bug_report` — Format bug report with severity assessment
-- `vibeguide_suggest_fix` — Suggest concrete fixes with explanations
+## Quick Start
 
-### Impact Analysis — Assess risk
-- `vibeguide_impact` — Analyze impact of changing a file
-- `vibeguide_impact_confirm` — Estimate downtime, needs approval?
-- `vibeguide_regression` — Check regression after fix
+```bash
+git clone https://github.com/hungf1511/vibeguide.git
+cd vibeguide
+npm install
+npm run build
+npm run check
+```
 
-### Planning — Plan ahead
-- `vibeguide_test_plan` — Generate test plan for Founder
-- `vibeguide_snapshot` — Snapshot repo before editing (create/list/restore)
-- `vibeguide_deploy_check` — Pre-deploy validation (bug patterns, uncommitted changes, orphans)
+Run the MCP server:
 
-### Changelog & Summary — Report to Founder
-- `vibeguide_changelog` — Generate changelog from git history
-- `vibeguide_diff_summary` — Summarize code changes for non-tech users
-- `vibeguide_what_changed` — View recent commits/files/changes
+```bash
+npm run start
+```
 
-### Session Tracking — Track working session
-- `vibeguide_session_status` — View current session timeline: status, changed files, snapshot backup, Founder decisions
-- `vibeguide_export_report` — Export session report as Markdown/JSON/Text for Notion/Linear
+## Connect to Codex
 
-### Smart Routing — Recommend Claude Code plugins
-- `vibeguide_smart_route` — Based on situation, recommend plugin + VibeGuide tools. Supports Vietnamese and English. Auto-detects installed plugins.
+Add the server to `C:\Users\User\.codex\config.toml` or your Codex config file:
 
-### Quality & Compliance — Quality assurance
-- `vibeguide_type_check` — Run TypeScript type check, report errors
-- `vibeguide_test_coverage` — Read coverage report, list weak files
-- `vibeguide_circular_deps` — Find circular import cycles
-- `vibeguide_dead_code` — Find unused exports and orphan files
-- `vibeguide_complexity` — Analyze code complexity (LOC + cyclomatic)
-- `vibeguide_a11y_check` — Scan basic accessibility issues (alt, aria-label, href, label)
-- `vibeguide_secret_scan` — Scan secrets, API keys, credentials in source
-- `vibeguide_i18n_gap` — Find missing/extra translation keys across locales
-- `vibeguide_doc_gap` — Find files missing README and exports missing JSDoc
-- `vibeguide_perf_budget` — Check bundle sizes against performance budget
+```toml
+[mcp_servers.vibeguide]
+command = "node"
+args = ["C:/Users/User/vibeguide/dist/mcp/server.js"]
+```
 
-### Monorepo & PR — Scale up
-- `vibeguide_monorepo_route` — Detect monorepo manager and affected packages
-- `vibeguide_review_pr` — Pre-merge checks: type, bug, secret, circular deps, impact
-- `vibeguide_founder_brief` — Generate founder-friendly weekly summary report
-- `vibeguide_meeting_notes` — Generate meeting notes from session context (done, in-progress, blockers)
+Verify:
 
-## Configuration (`.vibeguide.json`)
+```bash
+codex mcp list
+codex mcp get vibeguide
+```
 
-Create `.vibeguide.json` in repo root to customize:
+After reloading Codex, the `vibeguide_*` tools should be available in the next session.
+
+## Connect to Claude Code
+
+Add this to `~/.mcp.json` or a project-level `.mcp.json`:
 
 ```json
 {
-  "criticalFeatures": ["Payment", "Checkout", "Cart", "Auth"],
-  "language": "en",
-  "outputFormat": "markdown",
-  "severityThresholds": {
-    "deployBlock": "critical",
-    "needsApproval": "high"
+  "mcpServers": {
+    "vibeguide": {
+      "command": "node",
+      "args": ["/path/to/vibeguide/dist/mcp/server.js"]
+    }
   }
 }
 ```
 
-- `criticalFeatures` — AI warns when modifying files related to these features
-- `language` — Output language: `"vi"` or `"en"`
-- `outputFormat` — Default report format: `"json" | "markdown" | "text"`
-- `severityThresholds` — Thresholds for blocking deploy and requiring Founder approval
+Then open Claude Code and use `/mcp` to verify the connection.
+
+## 34 Tools
+
+### Core — Understand the Codebase
+
+- `vibeguide_scan_repo` — Scan repo structure and dependency graph.
+- `vibeguide_get_deps` — Read the scanned dependency graph.
+- `vibeguide_get_file` — Read files safely with path traversal protection.
+- `vibeguide_dependency_graph` — Export the dependency graph as Mermaid or JSON.
+- `vibeguide_trace_journey` — Trace a user journey through related files.
+
+### Bug Detection — Find Bugs Before Fixing
+
+- `vibeguide_heuristic_bug` — Detect patterns such as unawaited fetch, missing try/catch, hardcoded secrets, SQL injection, and `eval`.
+- `vibeguide_bug_report` — Format a bug report with severity.
+- `vibeguide_suggest_fix` — Suggest a concrete fix for a bug pattern.
+
+### Impact Analysis — Assess Risk
+
+- `vibeguide_impact` — Analyze affected files when changing a file.
+- `vibeguide_impact_confirm` — Estimate affected features, downtime, and approval needs.
+- `vibeguide_regression` — Check regression risk after changes.
+
+### Planning — Prepare the Change
+
+- `vibeguide_test_plan` — Generate a test plan for a feature.
+- `vibeguide_snapshot` — Create, list, or restore snapshots before editing.
+- `vibeguide_deploy_check` — Run pre-deploy checks for bug patterns, uncommitted changes, and orphan files.
+
+### Changelog & Summary — Plain-Language Reports
+
+- `vibeguide_changelog` — Generate a Vietnamese changelog from git history.
+- `vibeguide_diff_summary` — Summarize the current diff for non-technical users.
+- `vibeguide_what_changed` — Show recent commits, files, and changes.
+
+### Session Tracking — Track the Work Session
+
+- `vibeguide_session_status` — Show current session status, changed files, snapshots, and decisions.
+- `vibeguide_export_report` — Export the session timeline as Markdown, JSON, or text.
+
+### Smart Routing — Recommend the Right Tool
+
+- `vibeguide_smart_route` — Read a situation description and recommend the next tool/plugin to use.
+
+### Quality & Compliance — Quality Checks
+
+- `vibeguide_type_check` — Run TypeScript checks and report understandable errors.
+- `vibeguide_test_coverage` — Read coverage reports and list weak files.
+- `vibeguide_circular_deps` — Detect circular imports.
+- `vibeguide_dead_code` — Find unused exports and orphan files.
+- `vibeguide_complexity` — Analyze LOC and cyclomatic complexity.
+- `vibeguide_a11y_check` — Scan basic accessibility issues.
+- `vibeguide_secret_scan` — Scan secrets, API keys, and credentials.
+- `vibeguide_i18n_gap` — Find missing or extra translation keys across locales.
+- `vibeguide_doc_gap` — Find files missing README files and exports missing JSDoc.
+- `vibeguide_perf_budget` — Check bundle sizes against a performance budget.
+
+### Monorepo & PR — Pre-Merge Review
+
+- `vibeguide_monorepo_route` — Detect the monorepo manager and affected packages.
+- `vibeguide_review_pr` — Run pre-merge checks for type, bug, secret, circular dependency, and impact risks.
+- `vibeguide_founder_brief` — Generate a founder-friendly weekly report.
+- `vibeguide_meeting_notes` — Generate meeting notes from session context.
+
+## `.vibeguide.json` Configuration
+
+Example:
+
+```json
+{
+  "framework": "auto",
+  "ignorePatterns": [
+    "*.test.ts",
+    "*.spec.ts",
+    "__tests__/**",
+    "*.d.ts",
+    "test-project/**",
+    "test-*.cjs",
+    "scripts/**"
+  ],
+  "thresholds": {
+    "bugPatterns": {
+      "critical": 0,
+      "high": 3,
+      "medium": 10
+    },
+    "orphanFiles": 10,
+    "contextBudget": 4000
+  },
+  "security": {
+    "scanDependencies": true,
+    "owaspTop10": true
+  }
+}
+```
+
+Important fields:
+
+- `ignorePatterns` excludes fixtures, scripts, and generated files from scans.
+- `thresholds` tunes warnings for bug patterns, orphan files, and context budget.
+- `security` enables or disables security-oriented checks.
+- `framework` can stay as `auto` when VibeGuide should detect the project type.
+
+## Testing
+
+```bash
+npm run build
+npm run check
+node test-mcp.cjs
+node test-scenario.cjs
+node test-future-tools.cjs
+node test-batch2.cjs
+```
+
+The test suite verifies:
+
+- The MCP server exposes all 34 tools.
+- Zod schemas are converted to JSON Schema with enum/default/literal/nested object support.
+- Snapshot restore reverts modified files and deletes files created after the snapshot.
+- Diff summary, deploy check, changelog, dependency graph, and suggest fix behavior.
+- TypeScript checks use the local compiler when `node_modules/typescript` is available.
+
+## Dogfooding
+
+VibeGuide is used to test VibeGuide itself. A useful self-test loop is:
+
+```bash
+vibeguide_scan_repo
+vibeguide_type_check
+vibeguide_diff_summary
+vibeguide_review_pr
+vibeguide_deploy_check
+```
+
+Expected result before commit:
+
+- `vibeguide_type_check` passes.
+- `vibeguide_review_pr` has no blockers.
+- `vibeguide_deploy_check` only warns when there are uncommitted changes.
+
+## Real Workflow
+
+```text
+Founder: "The Pay button does not work"
+        ↓
+vibeguide_smart_route
+        ↓
+vibeguide_heuristic_bug
+        ↓
+vibeguide_trace_journey
+        ↓
+vibeguide_impact + vibeguide_impact_confirm
+        ↓
+vibeguide_test_plan + vibeguide_snapshot
+        ↓
+Fix code
+        ↓
+vibeguide_review_pr + vibeguide_deploy_check
+        ↓
+Deploy
+```
 
 ## GitHub Action
 
-VibeGuide runs CI on every PR (`.github/workflows/vibeguide-check.yml`):
+VibeGuide can run CI on push/PR:
 
 ```yaml
 name: VibeGuide Check
@@ -106,71 +247,17 @@ jobs:
       - run: npm run build
       - run: npm run check
       - run: node test-mcp.cjs
-```
-
-## Installation
-
-```bash
-git clone https://github.com/hungf1511/vibeguide.git
-cd vibeguide
-npm install
-npm run build
-npm run check  # VibeGuide self-check via dogfooding
-```
-
-## Connect to Claude Code
-
-Add to `~/.mcp.json` (or `.mcp.json` in your project):
-
-```json
-{
-  "mcpServers": {
-    "vibeguide": {
-      "command": "node",
-      "args": ["/path/to/vibeguide/dist/mcp/server.js"]
-    }
-  }
-}
-```
-
-Then type `/mcp` in Claude Code to connect.
-
-## Testing
-
-```bash
-node test-mcp.cjs          # 45 assertions — all tools
-node test-scenario.cjs     # Real-world scenario (payment button)
-node test-future-tools.cjs # Snapshot, diff summary, deploy check
-node test-batch2.cjs       # Suggest fix, changelog, dependency graph
-npm run check              # VibeGuide self-check (dogfooding)
-```
-
-## Real-world Workflow
-
-```
-Founder: "Pay button doesn't work"
-        ↓
-[Dev] vibeguide_smart_route → detect bug + recommend tools
-[Dev] vibeguide_heuristic_bug → find 2 bug patterns
-[Dev] vibeguide_trace_journey → trace payment flow
-[Dev] vibeguide_impact → assess medium risk
-[Dev] vibeguide_impact_confirm → Founder needs to approve 1-day downtime
-[Dev] vibeguide_test_plan → 6 test steps for Founder
-[Dev] vibeguide_snapshot → backup before fixing
-[Founder test → Pass]
-[Dev] vibeguide_session_status → Founder reviews session summary
-[Dev] vibeguide_deploy_check → pre-deploy validation
-[Deploy successful]
+      - run: node test-future-tools.cjs
 ```
 
 ## Tech Stack
 
-- TypeScript + ESM
-- MCP SDK (@modelcontextprotocol/sdk)
-- Zod schemas
-- No database — JSON file cache + JSON session tracking
-- SHA-256 snapshots
-- Dogfooding: `npm run check` self-checks using VibeGuide
+- TypeScript + ESM.
+- MCP SDK `@modelcontextprotocol/sdk`.
+- Zod schemas for tool input.
+- JSON cache/session/snapshot files, no database required.
+- SHA-256 checksums for snapshots.
+- Dogfooding with VibeGuide's own MCP tools.
 
 ## License
 

@@ -1,96 +1,237 @@
-# VibeGuide — MCP Server cho AI Developer & Non-Tech Founder
+# VibeGuide — MCP Server cho AI Developer & Founder không chuyên kỹ thuật
 
-[🇻🇳 Tiếng Việt](README.md) | [🇺🇸 English](README_EN.md)
+[Tiếng Việt](README.md) | [English](README_EN.md)
 
-VibeGuide là cầu nối giữa AI Developer (Claude Code) và Non-Tech Founder để ngăn chặn vòng lặp fix-code mãi không dứt. Nó cung cấp 34 công cụ MCP giúp AI hiểu codebase, đánh giá rủi ro, lên kế hoạch test, và đề xuất plugin Claude Code phù hợp — tất cả output bằng tiếng Việt.
+VibeGuide là MCP server giúp AI coding assistant như Codex hoặc Claude Code hiểu codebase trước khi sửa. Thay vì đoán mò, AI có thể quét repo, tìm bug pattern, phân tích ảnh hưởng, tạo snapshot, kiểm tra trước deploy và viết báo cáo dễ hiểu cho người không chuyên kỹ thuật.
 
-## Tại sao cần VibeGuide?
+Dự án hiện có 34 MCP tools, viết bằng TypeScript, chạy local, không cần database.
 
-Khi Founder báo "nút Thanh toán không ăn", AI Developer thường:
-- Đoán mò sửa → test thất bại → sửa tiếp → lặp lại vô tận
-- Không biết ảnh hưởng của thay đổi đến những chức năng nào
-- Không có kế hoạch test rõ ràng để Founder xác nhận
+## Vấn đề VibeGuide giải quyết
 
-VibeGuide giải quyết tất cả.
+Khi Founder nói "nút Thanh toán không ăn", AI Developer thường gặp 3 rủi ro:
 
-## 34 Tools
+- Sửa theo phỏng đoán, test fail rồi tiếp tục sửa vòng lặp.
+- Không biết thay đổi một file sẽ ảnh hưởng đến feature nào.
+- Không có test plan rõ ràng để Founder xác nhận trước khi deploy.
 
-### Core — Hiểu codebase
-- `vibeguide_scan_repo` — Quét cấu trúc repo, dependency graph
-- `vibeguide_get_deps` — Trích xuất dependency graph
-- `vibeguide_get_file` — Đọc file an toàn (chống path traversal)
-- `vibeguide_dependency_graph` — Xuất dependency dạng Mermaid
-- `vibeguide_trace_journey` — Truy vết luồng người dùng qua codebase
+VibeGuide biến tình huống mơ hồ thành workflow rõ ràng: scan → trace → impact → snapshot → fix → review → deploy check.
 
-### Bug Detection — Tìm lỗi trước khi sửa
-- `vibeguide_heuristic_bug` — Scan bug patterns (unawaited-fetch, missing-try-catch, console-log, hardcoded-secret, any-type, sql-injection, eval-usage)
-- `vibeguide_bug_report` — Format bug report với severity assessment
-- `vibeguide_suggest_fix` — Đề xuất fix cụ thể + giải thích tiếng Việt
+## Cài đặt nhanh
 
-### Impact Analysis — Đánh giá rủi ro
-- `vibeguide_impact` — Phân tích ảnh hưởng khi sửa file
-- `vibeguide_impact_confirm` — Ước tính downtime, cần approve không
-- `vibeguide_regression` — Kiểm tra regression sau fix
+```bash
+git clone https://github.com/hungf1511/vibeguide.git
+cd vibeguide
+npm install
+npm run build
+npm run check
+```
 
-### Planning — Lên kế hoạch
-- `vibeguide_test_plan` — Generate test plan cho Founder
-- `vibeguide_snapshot` — Snapshot repo trước khi sửa (create/list/restore)
-- `vibeguide_deploy_check` — Pre-deploy validation (bug patterns, uncommitted changes, orphans)
+Chạy MCP server:
 
-### Changelog & Summary — Báo cáo cho Founder
-- `vibeguide_changelog` — Generate changelog tiếng Việt từ git history
-- `vibeguide_diff_summary` — Tóm tắt thay đổi code cho non-tech user
-- `vibeguide_what_changed` — Xem commits/files/thay đổi gần đây
+```bash
+npm run start
+```
 
-### Session Tracking — Theo dõi phiên làm việc
-- `vibeguide_session_status` — Xem timeline phiên làm việc hiện tại: trạng thái, file đã sửa, snapshot backup, quyết định của Founder
-- `vibeguide_export_report` — Xuất báo cáo phiên làm việc ra Markdown/JSON/Text, paste vào Notion/Linear
+## Kết nối với Codex
 
-### Smart Routing — Gợi ý plugin Claude Code
-- `vibeguide_smart_route` — Dựa vào tình huống, recommend plugin + VibeGuide tools phù hợp. Hỗ trợ tiếng Việt và tiếng Anh. Tự động scan plugin đã cài.
+Thêm server vào `C:\Users\User\.codex\config.toml` hoặc file config Codex tương ứng:
 
-### Quality & Compliance — Đảm bảo chất lượng
-- `vibeguide_type_check` — Chạy TypeScript type check, báo lỗi bằng tiếng Việt
-- `vibeguide_test_coverage` — Đọc coverage report, liệt kê file yếu
-- `vibeguide_circular_deps` — Tìm vòng lặp import
-- `vibeguide_dead_code` — Tìm export không dùng và file orphan
-- `vibeguide_complexity` — Phân tích độ phức tạp code (LOC + cyclomatic)
-- `vibeguide_a11y_check` — Quét lỗi tiếp cận cơ bản (alt, aria-label, href, label)
-- `vibeguide_secret_scan` — Quét secret, API key, credential trong source
-- `vibeguide_i18n_gap` — Tìm key dịch thiếu/thừa giữa các locale
-- `vibeguide_doc_gap` — Tìm file thiếu README và export thiếu JSDoc
-- `vibeguide_perf_budget` — Kiểm tra kích thước bundle so với ngân sách
+```toml
+[mcp_servers.vibeguide]
+command = "node"
+args = ["C:/Users/User/vibeguide/dist/mcp/server.js"]
+```
 
-### Monorepo & PR — Quy mô lớn
-- `vibeguide_monorepo_route` — Phát hiện monorepo manager và package bị ảnh hưởng
-- `vibeguide_review_pr` — Kiểm tra pre-merge: type, bug, secret, circular deps, impact
-- `vibeguide_founder_brief` — Tạo báo cáo tuần thân thiện cho Founder
-- `vibeguide_meeting_notes` — Tạo biên bản họp từ session context (done, in-progress, blockers)
+Kiểm tra:
 
-## Cấu hình (`.vibeguide.json`)
+```bash
+codex mcp list
+codex mcp get vibeguide
+```
 
-Tạo file `.vibeguide.json` ở root repo để tùy chỉnh:
+Sau khi reload Codex, các tool `vibeguide_*` sẽ xuất hiện trong phiên làm việc mới.
+
+## Kết nối với Claude Code
+
+Thêm vào `~/.mcp.json` hoặc `.mcp.json` trong project:
 
 ```json
 {
-  "criticalFeatures": ["Thanh toán", "Giỏ hàng", "Payment", "Checkout"],
-  "language": "vi",
-  "outputFormat": "markdown",
-  "severityThresholds": {
-    "deployBlock": "critical",
-    "needsApproval": "high"
+  "mcpServers": {
+    "vibeguide": {
+      "command": "node",
+      "args": ["/path/to/vibeguide/dist/mcp/server.js"]
+    }
   }
 }
 ```
 
-- `criticalFeatures` — AI sẽ cảnh báo nếu sửa file liên quan đến feature này
-- `language` — Ngôn ngữ output: `"vi"` hoặc `"en"`
-- `outputFormat` — Format mặc định cho report: `"json" | "markdown" | "text"`
-- `severityThresholds` — Ngưỡng block deploy và cần Founder approve
+Sau đó mở Claude Code và dùng `/mcp` để kiểm tra kết nối.
+
+## 34 Tools
+
+### Core — Hiểu codebase
+
+- `vibeguide_scan_repo` — Quét cấu trúc repo và dependency graph.
+- `vibeguide_get_deps` — Lấy dependency graph đã scan.
+- `vibeguide_get_file` — Đọc file an toàn, chống path traversal.
+- `vibeguide_dependency_graph` — Xuất dependency graph dạng Mermaid hoặc JSON.
+- `vibeguide_trace_journey` — Truy vết hành trình người dùng qua các file liên quan.
+
+### Bug Detection — Tìm lỗi trước khi sửa
+
+- `vibeguide_heuristic_bug` — Tìm bug pattern như unawaited fetch, missing try/catch, secret hardcode, SQL injection, `eval`.
+- `vibeguide_bug_report` — Chuẩn hóa bug report theo severity.
+- `vibeguide_suggest_fix` — Gợi ý fix cụ thể cho bug pattern.
+
+### Impact Analysis — Đánh giá rủi ro
+
+- `vibeguide_impact` — Phân tích file bị ảnh hưởng khi sửa một file.
+- `vibeguide_impact_confirm` — Ước tính feature bị ảnh hưởng, downtime và mức cần approval.
+- `vibeguide_regression` — Kiểm tra regression sau thay đổi.
+
+### Planning — Lập kế hoạch
+
+- `vibeguide_test_plan` — Tạo test plan cho một feature.
+- `vibeguide_snapshot` — Tạo, liệt kê hoặc restore snapshot trước khi sửa.
+- `vibeguide_deploy_check` — Kiểm tra bug pattern, uncommitted changes và orphan files trước deploy.
+
+### Changelog & Summary — Báo cáo dễ hiểu
+
+- `vibeguide_changelog` — Tạo changelog tiếng Việt từ git history.
+- `vibeguide_diff_summary` — Tóm tắt diff hiện tại cho non-tech user.
+- `vibeguide_what_changed` — Xem commit, file và thay đổi gần đây.
+
+### Session Tracking — Theo dõi phiên làm việc
+
+- `vibeguide_session_status` — Xem trạng thái phiên hiện tại, file đã sửa, snapshot và quyết định.
+- `vibeguide_export_report` — Xuất timeline phiên làm việc dạng Markdown, JSON hoặc text.
+
+### Smart Routing — Gợi ý tool phù hợp
+
+- `vibeguide_smart_route` — Nhận mô tả tình huống rồi đề xuất tool/plugin nên dùng tiếp theo.
+
+### Quality & Compliance — Kiểm tra chất lượng
+
+- `vibeguide_type_check` — Chạy TypeScript check và báo lỗi dễ hiểu.
+- `vibeguide_test_coverage` — Đọc coverage report và liệt kê file yếu.
+- `vibeguide_circular_deps` — Tìm vòng lặp import.
+- `vibeguide_dead_code` — Tìm export không dùng và file orphan.
+- `vibeguide_complexity` — Phân tích LOC và cyclomatic complexity.
+- `vibeguide_a11y_check` — Quét lỗi accessibility cơ bản.
+- `vibeguide_secret_scan` — Quét secret, API key, credential.
+- `vibeguide_i18n_gap` — Tìm key dịch thiếu hoặc thừa giữa locale.
+- `vibeguide_doc_gap` — Tìm file thiếu README và export thiếu JSDoc.
+- `vibeguide_perf_budget` — Kiểm tra kích thước bundle theo performance budget.
+
+### Monorepo & PR — Kiểm tra trước merge
+
+- `vibeguide_monorepo_route` — Phát hiện monorepo manager và package bị ảnh hưởng.
+- `vibeguide_review_pr` — Kiểm tra pre-merge: type, bug, secret, circular deps, impact.
+- `vibeguide_founder_brief` — Tạo báo cáo tuần thân thiện cho Founder.
+- `vibeguide_meeting_notes` — Tạo meeting notes từ session context.
+
+## Cấu hình `.vibeguide.json`
+
+Ví dụ:
+
+```json
+{
+  "framework": "auto",
+  "ignorePatterns": [
+    "*.test.ts",
+    "*.spec.ts",
+    "__tests__/**",
+    "*.d.ts",
+    "test-project/**",
+    "test-*.cjs",
+    "scripts/**"
+  ],
+  "thresholds": {
+    "bugPatterns": {
+      "critical": 0,
+      "high": 3,
+      "medium": 10
+    },
+    "orphanFiles": 10,
+    "contextBudget": 4000
+  },
+  "security": {
+    "scanDependencies": true,
+    "owaspTop10": true
+  }
+}
+```
+
+Các trường quan trọng:
+
+- `ignorePatterns` giúp loại test fixture, script hoặc file sinh ra khỏi scan.
+- `thresholds` điều chỉnh mức cảnh báo cho bug pattern, orphan file và context budget.
+- `security` bật/tắt các kiểm tra bảo mật.
+- `framework` để `auto` nếu muốn VibeGuide tự nhận diện project.
+
+## Kiểm thử
+
+```bash
+npm run build
+npm run check
+node test-mcp.cjs
+node test-scenario.cjs
+node test-future-tools.cjs
+node test-batch2.cjs
+```
+
+Bộ test hiện kiểm tra:
+
+- MCP server expose đủ 34 tools.
+- Zod schema chuyển sang JSON Schema đúng enum/default/literal/nested object.
+- Snapshot restore khôi phục file bị sửa và xóa file mới tạo sau snapshot.
+- Diff summary, deploy check, changelog, dependency graph và suggest fix.
+- TypeScript check chạy qua compiler local khi có `node_modules/typescript`.
+
+## Dogfooding
+
+VibeGuide được dùng để kiểm tra chính VibeGuide. Một vòng self-test nên gồm:
+
+```bash
+vibeguide_scan_repo
+vibeguide_type_check
+vibeguide_diff_summary
+vibeguide_review_pr
+vibeguide_deploy_check
+```
+
+Kết quả mong muốn trước khi commit:
+
+- `vibeguide_type_check` pass.
+- `vibeguide_review_pr` không có blocker.
+- `vibeguide_deploy_check` chỉ được warning nếu còn uncommitted changes.
+
+## Workflow thực tế
+
+```text
+Founder: "Nút Thanh toán không ăn"
+        ↓
+vibeguide_smart_route
+        ↓
+vibeguide_heuristic_bug
+        ↓
+vibeguide_trace_journey
+        ↓
+vibeguide_impact + vibeguide_impact_confirm
+        ↓
+vibeguide_test_plan + vibeguide_snapshot
+        ↓
+Fix code
+        ↓
+vibeguide_review_pr + vibeguide_deploy_check
+        ↓
+Deploy
+```
 
 ## GitHub Action
 
-VibeGuide tự động chạy CI trên mỗi PR (`.github/workflows/vibeguide-check.yml`):
+VibeGuide có thể chạy CI trên push/PR:
 
 ```yaml
 name: VibeGuide Check
@@ -106,71 +247,17 @@ jobs:
       - run: npm run build
       - run: npm run check
       - run: node test-mcp.cjs
+      - run: node test-future-tools.cjs
 ```
 
-## Cài đặt
+## Tech Stack
 
-```bash
-git clone https://github.com/hungf1511/vibeguide.git
-cd vibeguide
-npm install
-npm run build
-npm run check  # VibeGuide tự quét chính nó — dogfooding
-```
-
-## Kết nối với Claude Code
-
-Thêm vào `~/.mcp.json` (hoặc `.mcp.json` trong project):
-
-```json
-{
-  "mcpServers": {
-    "vibeguide": {
-      "command": "node",
-      "args": ["/path/to/vibeguide/dist/mcp/server.js"]
-    }
-  }
-}
-```
-
-Sau đó trong Claude Code gõ `/mcp` để kết nối.
-
-## Kiểm thử
-
-```bash
-node test-mcp.cjs          # 45 assertions — tất cả tools
-node test-scenario.cjs     # Scenario thực tế (payment button)
-node test-future-tools.cjs # Snapshot, diff summary, deploy check
-node test-batch2.cjs       # Suggest fix, changelog, dependency graph
-npm run check              # VibeGuide self-check (dogfooding)
-```
-
-## Workflow thực tế
-
-```
-Founder: "Nút Thanh toán không ăn"
-        ↓
-[Dev] vibeguide_smart_route → detect bug + recommend tools
-[Dev] vibeguide_heuristic_bug → tìm 2 bug patterns
-[Dev] vibeguide_trace_journey → truy vết luồng payment
-[Dev] vibeguide_impact → đánh giá rủi ro medium
-[Dev] vibeguide_impact_confirm → Founder cần approve 1 ngày downtime
-[Dev] vibeguide_test_plan → 6 bước test cho Founder
-[Dev] vibeguide_snapshot → backup trước khi sửa
-[Founder test → Pass]
-[Dev] vibeguide_session_status → Founder xem tổng kết phiên làm việc
-[Dev] vibeguide_deploy_check → kiểm tra trước deploy
-[Deploy thành công]
-```
-
-## Công nghệ
-
-- TypeScript + ESM
-- MCP SDK (@modelcontextprotocol/sdk)
-- Zod schemas
-- No database — JSON file cache + JSON session tracking
-- SHA-256 snapshots
-- Dogfooding: `npm run check` tự quét chính nó bằng VibeGuide
+- TypeScript + ESM.
+- MCP SDK `@modelcontextprotocol/sdk`.
+- Zod schema cho tool input.
+- JSON cache/session/snapshot, không cần database.
+- SHA-256 checksum cho snapshot.
+- Dogfooding bằng chính MCP tools của VibeGuide.
 
 ## License
 

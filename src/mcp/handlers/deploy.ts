@@ -1,9 +1,7 @@
 ﻿/** Pre-deploy validation handler — kiểm tra bug patterns, uncommitted changes, orphans, secrets. */
-import * as path from "path";
-import * as fs from "fs";
 import type { DeployCheckResult, DeployCheck } from "../../types.js";
 import { resolveRepo } from "../../utils/pathGuard.js";
-import { getFileContent, getAllSourceFiles } from "../../utils/scanner.js";
+import { getFileContent, getAllSourceFiles, getGitStatus } from "../../utils/scanner.js";
 import { matchPatterns } from "../../utils/heuristics.js";
 import { loadConfig, detectFramework } from "../../utils/configLoader.js";
 import { checkKnownVulnerabilities } from "../../utils/vulnerabilityScanner.js";
@@ -36,16 +34,12 @@ export async function handleDeployCheck(args: { repoPath?: string; checkBugPatte
   }
 
   if (args.checkUncommitted !== false) {
-    let hasUncommitted = false;
-    try {
-      const { execSync } = await import("child_process");
-      const output = execSync("git status --short", { cwd: repo, encoding: "utf-8" });
-      hasUncommitted = output.trim().length > 0;
-    } catch { /* Not a git repo */ }
+    const modified = getGitStatus(repo).modified;
+    const hasUncommitted = modified.length > 0;
     checks.push({
       name: "Uncommitted Changes",
       passed: !hasUncommitted,
-      message: hasUncommitted ? "Co file chua commit - nen commit truoc khi deploy." : "Tat ca thay doi da commit.",
+      message: hasUncommitted ? `Co ${modified.length} file chua commit - nen commit truoc khi deploy.` : "Tat ca thay doi da commit.",
       severity: hasUncommitted ? "warning" : "info",
     });
   }

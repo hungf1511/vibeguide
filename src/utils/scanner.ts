@@ -2,7 +2,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
+import { execFileSync } from "child_process";
 import type { TreeNode, DepGraph, DepEdge } from "../types.js";
+import { loadConfig, shouldIgnore } from "./configLoader.js";
 
 const EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".py", ".go", ".rs"]);
 const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", "cache", "coverage"]);
@@ -15,6 +17,7 @@ export function normalizePath(p: string): string {
 /** List ALL source files matching EXTS in repo (used by scanners that should not depend on dep edges). */
 export function getAllSourceFiles(dir: string): string[] {
   const files: string[] = [];
+  const ignorePatterns = getConfiguredIgnorePatterns(dir);
   function walk(current: string, rel: string) {
     let entries: fs.Dirent[];
     try {
@@ -26,6 +29,7 @@ export function getAllSourceFiles(dir: string): string[] {
       if (entry.name.startsWith(".") && entry.name !== ".env") continue;
       if (IGNORE.has(entry.name)) continue;
       const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (isIgnoredPath(childRel, ignorePatterns)) continue;
       if (entry.isDirectory()) {
         walk(path.join(current, entry.name), childRel);
       } else if (EXTS.has(path.extname(entry.name))) {
@@ -50,7 +54,7 @@ export function getRepoSignature(dir: string): string {
 }
 
 export function scanDirectory(dir: string): TreeNode[] {
-  const result: TreeNode[] = [];
+  const ignorePatterns = getConfiguredIgnorePatterns(dir);
 
   function walk(current: string, rel: string): TreeNode[] {
     const items: TreeNode[] = [];
@@ -66,6 +70,7 @@ export function scanDirectory(dir: string): TreeNode[] {
       if (IGNORE.has(entry.name)) continue;
 
       const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (isIgnoredPath(childRel, ignorePatterns)) continue;
       if (entry.isDirectory()) {
         const children = walk(path.join(current, entry.name), childRel);
         items.push({ name: entry.name, type: "folder", path: childRel, children });
@@ -78,6 +83,19 @@ export function scanDirectory(dir: string): TreeNode[] {
   }
 
   return walk(dir, "");
+}
+
+function getConfiguredIgnorePatterns(dir: string): string[] {
+  try {
+    return loadConfig(dir).ignorePatterns;
+  } catch {
+    return [];
+  }
+}
+
+function isIgnoredPath(filePath: string, patterns: string[]): boolean {
+  if (patterns.length === 0) return false;
+  return shouldIgnore(normalizePath(filePath), patterns);
 }
 
 export function scanDependencies(dir: string): DepGraph {
@@ -244,6 +262,27 @@ export function getGitStatus(repoPath: string) {
   };
 
   try {
+    const output = runGit(repoPath, ["status", "--short", "--branch"]);
+    for (const line of output.split("\n").filter(Boolean)) {
+      if (line.startsWith("## ")) {
+        const branchInfo = line.slice(3).trim();
+        const branchName = branchInfo.split("...")[0].split(" ")[0];
+        if (branchName) status.branch = branchName;
+        const aheadMatch = branchInfo.match(/ahead (\d+)/);
+        if (aheadMatch) status.ahead = parseInt(aheadMatch[1], 10);
+        continue;
+      }
+
+      const filePart = line.slice(3).trim();
+      const renamedTarget = filePart.includes(" -> ") ? filePart.split(" -> ").pop() : filePart;
+      if (renamedTarget) status.modified.push(normalizePath(renamedTarget));
+    }
+    return status;
+  } catch {
+    // Fall back to reading HEAD below for repos where git is not available.
+  }
+
+  try {
     const head = fs.readFileSync(path.join(repoPath, ".git", "HEAD"), "utf-8").trim();
     if (head.startsWith("ref: ")) {
       status.branch = head.replace("ref: refs/heads/", "");
@@ -253,4 +292,47 @@ export function getGitStatus(repoPath: string) {
   }
 
   return status;
+}
+
+export function getRecentCommits(repoPath: string, count = 5): string[] {
+  try {
+    const output = runGit(repoPath, ["log", "--oneline", `-${count}`]);
+    return output.split("\n").filter(Boolean);
+  } catch {
+    return getRecentCommitsFromReflog(repoPath, count);
+  }
+}
+
+function getRecentCommitsFromReflog(repoPath: string, count: number): string[] {
+  try {
+    const logsPath = path.join(repoPath, ".git", "logs", "HEAD");
+    const seen = new Set<string>();
+    const lines = fs.readFileSync(logsPath, "utf-8").split("\n").filter(Boolean).reverse();
+    const commits: string[] = [];
+
+    for (const line of lines) {
+      const parts = line.split("\t");
+      if (parts.length < 2) continue;
+      const meta = parts[0].split(" ");
+      const hash = meta[1]?.slice(0, 7);
+      const message = parts.slice(1).join("\t").replace(/^commit(?: \(initial\))?:\s*/i, "").trim();
+      if (!hash || seen.has(hash) || !message) continue;
+      seen.add(hash);
+      commits.push(`${hash} ${message}`);
+      if (commits.length >= count) break;
+    }
+
+    return commits;
+  } catch {
+    return [];
+  }
+}
+
+function runGit(repoPath: string, args: string[]): string {
+  const safeRepo = normalizePath(path.resolve(repoPath));
+  return execFileSync("git", ["-c", `safe.directory=${safeRepo}`, ...args], {
+    cwd: repoPath,
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
 }

@@ -1,9 +1,8 @@
 ﻿/** Repo exploration handlers — scan, get_file, get_deps, changelog, snapshot, diff_summary. */
 import * as path from "path";
-import * as fs from "fs";
 import type { TreeNode, DepGraph, ChangeLog, ChangelogResult, DependencyGraphResult, SnapshotResult, DiffSummaryResult } from "../../types.js";
 import { resolveRepo, resolveSafe } from "../../utils/pathGuard.js";
-import { scanDirectory, getFileContent, getGitStatus, normalizePath } from "../../utils/scanner.js";
+import { scanDirectory, getFileContent, getGitStatus, getRecentCommits } from "../../utils/scanner.js";
 import { generateChangelog } from "../../utils/changelog.js";
 import { createSnapshot, listSnapshots, restoreSnapshot, getSnapshot } from "../../utils/snapshot.js";
 import { getCachedDeps } from "./impact.js";
@@ -49,6 +48,22 @@ function countTree(items: TreeNode[]): { files: number; folders: number } {
   return { files, folders };
 }
 
+function readComparableFiles(repo: string): Map<string, string> {
+  const files = new Map<string, string>();
+  function walk(nodes: TreeNode[]) {
+    for (const node of nodes) {
+      if (node.type === "file") {
+        const content = getFileContent(node.path, repo);
+        if (content !== null) files.set(node.path, content);
+      } else if (node.children) {
+        walk(node.children);
+      }
+    }
+  }
+  walk(scanDirectory(repo));
+  return files;
+}
+
 export async function handleGetFile(args: { filePath: string; repoPath?: string }): Promise<{ content: string | null; truncated: boolean }> {
   const repo = resolveRepo(args.repoPath);
   const safePath = resolveSafe(args.filePath, repo);
@@ -64,13 +79,8 @@ export async function handleGetDeps(args: { repoPath?: string }): Promise<DepGra
 
 export async function handleWhatChanged(args: { repoPath?: string }): Promise<ChangeLog> {
   const repo = resolveRepo(args.repoPath);
-  let commits: string[] = [];
-  let files: string[] = [];
-  try {
-    const logsPath = path.join(repo, ".git", "logs", "HEAD");
-    if (fs.existsSync(logsPath)) commits = fs.readFileSync(logsPath, "utf-8").split("\n").filter(Boolean).slice(-5).map((l) => l.split(" ").slice(2, 4).join(" "));
-  } catch { /* ignore */ }
-  try { files = getGitStatus(repo).modified; } catch { /* ignore */ }
+  const commits = getRecentCommits(repo, 5);
+  const files = getGitStatus(repo).modified;
   const featureSet = new Set<string>();
   for (const f of files) { const parts = f.split("/"); if (parts.length > 1) featureSet.add(parts[0]); }
   return { commits, files, features: Array.from(featureSet) };
@@ -128,7 +138,7 @@ export async function handleSnapshot(args: { repoPath?: string; label?: string; 
   if (action === "restore") {
     if (!args.snapshotId) throw new Error("snapshotId required for restore");
     const result = restoreSnapshot(repo, args.snapshotId);
-    return { snapshotId: args.snapshotId, fileCount: result.filesChanged, timestamp: new Date().toISOString(), restored: result.restored, filesChanged: result.filesChanged };
+    return { snapshotId: args.snapshotId, fileCount: result.filesChanged + result.filesDeleted, timestamp: new Date().toISOString(), restored: result.restored, filesChanged: result.filesChanged, filesDeleted: result.filesDeleted };
   }
   throw new Error(`Unknown action: ${action}`);
 }
@@ -136,12 +146,7 @@ export async function handleSnapshot(args: { repoPath?: string; label?: string; 
 export async function handleDiffSummary(args: { repoPath?: string; since?: string; snapshotId?: string }): Promise<DiffSummaryResult> {
   const repo = resolveRepo(args.repoPath);
   const since = args.since || "git";
-  const deps = getCachedDeps(repo);
-  const currentFiles = new Map<string, string>();
-  for (const file of deps.nodes) {
-    const content = getFileContent(file, repo);
-    if (content !== null) currentFiles.set(file, content);
-  }
+  const currentFiles = readComparableFiles(repo);
   let changedFiles: { file: string; changeType: "added" | "modified" | "deleted"; description: string }[] = [];
   if (since === "snapshot" && args.snapshotId) {
     const snapshot = getSnapshot(repo, args.snapshotId);

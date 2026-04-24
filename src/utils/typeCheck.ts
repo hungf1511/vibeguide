@@ -11,21 +11,20 @@ export function runTypeCheck(repo: string): TypeCheckResult {
   let stdout = "";
   let stderr = "";
   let exitCode = 0;
+  let executionError = "";
 
-  const localTsc = path.join(repo, "node_modules", ".bin", process.platform === "win32" ? "tsc.cmd" : "tsc");
-  const tscBin = fs.existsSync(localTsc) ? localTsc : "tsc";
+  const localTscJs = path.join(repo, "node_modules", "typescript", "bin", "tsc");
+  const command = fs.existsSync(localTscJs) ? process.execPath : "tsc";
+  const commandArgs = fs.existsSync(localTscJs) ? [localTscJs, "--noEmit", "--pretty", "false"] : ["--noEmit", "--pretty", "false"];
 
   try {
-    if (process.platform === "win32") {
-      stdout = cp.execSync(`"${tscBin}" --noEmit --pretty false`, { cwd: repo, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
-    } else {
-      stdout = cp.execFileSync(tscBin, ["--noEmit", "--pretty", "false"], { cwd: repo, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
-    }
+    stdout = cp.execFileSync(command, commandArgs, { cwd: repo, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
   } catch (err) {
     const e = err as { status?: number; code?: string; stdout?: string; stderr?: string; message?: string };
     exitCode = e.status ?? (e.code === "ENOENT" ? 127 : 1);
     stdout = (e.stdout ?? "").toString();
     stderr = (e.stderr ?? "").toString();
+    executionError = e.message ?? "";
   }
 
   const combined = stdout + "\n" + stderr;
@@ -44,17 +43,23 @@ export function runTypeCheck(repo: string): TypeCheckResult {
   }
 
   const errorCount = errors.length;
+  const compilerUnavailable = exitCode !== 0 && errorCount === 0;
   const passed = exitCode === 0 && errorCount === 0;
-  const summary = passed
-    ? "TypeScript pass - khong co loi compile."
-    : "Phat hien " + errorCount + " loi TypeScript" + (errors[0] ? " - dau tien: " + errors[0].file + ":" + errors[0].line + " (" + errors[0].code + ")" : "") + ".";
+  let summary: string;
+  if (compilerUnavailable) {
+    summary = "Khong chay duoc TypeScript compiler hoac khong parse duoc loi. Hay chay npm run build de xem chi tiet.";
+  } else if (passed) {
+    summary = "TypeScript pass - khong co loi compile.";
+  } else {
+    summary = "Phat hien " + errorCount + " loi TypeScript" + (errors[0] ? " - dau tien: " + errors[0].file + ":" + errors[0].line + " (" + errors[0].code + ")" : "") + ".";
+  }
 
   return {
     passed,
     errorCount,
-    warningCount: 0,
+    warningCount: compilerUnavailable ? 1 : 0,
     errors: errors.slice(0, 50),
-    summary,
+    summary: executionError && compilerUnavailable ? summary + " (" + executionError + ")" : summary,
     durationMs: Date.now() - start,
   };
 }

@@ -351,6 +351,9 @@ interface ZodInternal {
     type?: z.ZodTypeAny;
     innerType?: z.ZodTypeAny;
     description?: string;
+    values?: string[];
+    value?: unknown;
+    defaultValue?: () => unknown;
   };
   isOptional?: () => boolean;
 }
@@ -363,7 +366,7 @@ function zodToJsonSchema(schema: z.ZodTypeAny): unknown {
     const required: string[] = [];
     for (const [key, value] of Object.entries(shape)) {
       properties[key] = zodTypeToJson(value);
-      if (!(value as unknown as ZodInternal).isOptional?.()) {
+      if (isRequired(value)) {
         required.push(key);
       }
     }
@@ -372,20 +375,46 @@ function zodToJsonSchema(schema: z.ZodTypeAny): unknown {
   return {};
 }
 
+function isRequired(schema: z.ZodTypeAny): boolean {
+  const def = (schema as unknown as ZodInternal)._def;
+  if (def?.typeName === "ZodOptional" || def?.typeName === "ZodDefault") return false;
+  return !(schema as unknown as ZodInternal).isOptional?.();
+}
+
 function zodTypeToJson(z: z.ZodTypeAny): unknown {
   const def = (z as unknown as ZodInternal)._def;
+  const withDescription = (schema: Record<string, unknown>) => {
+    if (def?.description) schema.description = def.description;
+    return schema;
+  };
   switch (def?.typeName) {
     case "ZodString":
-      return { type: "string", description: def?.description };
+      return withDescription({ type: "string" });
     case "ZodNumber":
-      return { type: "number", description: def?.description };
+      return withDescription({ type: "number" });
     case "ZodBoolean":
-      return { type: "boolean", description: def?.description };
+      return withDescription({ type: "boolean" });
+    case "ZodEnum":
+      return withDescription({ type: "string", enum: def?.values || [] });
+    case "ZodLiteral":
+      return withDescription({ const: def?.value, type: typeof def?.value });
     case "ZodArray":
-      return { type: "array", items: def?.type ? zodTypeToJson(def.type) : {}, description: def?.description };
+      return withDescription({ type: "array", items: def?.type ? zodTypeToJson(def.type) : {} });
     case "ZodOptional":
-      return def?.innerType ? zodTypeToJson(def.innerType) : {};
+      return def?.innerType ? withDescription(zodTypeToJson(def.innerType) as Record<string, unknown>) : {};
+    case "ZodDefault": {
+      const schema = def?.innerType ? (zodTypeToJson(def.innerType) as Record<string, unknown>) : {};
+      if (def?.defaultValue) schema.default = def.defaultValue();
+      return withDescription(schema);
+    }
+    case "ZodNullable": {
+      const schema = def?.innerType ? (zodTypeToJson(def.innerType) as Record<string, unknown>) : {};
+      schema.nullable = true;
+      return withDescription(schema);
+    }
+    case "ZodObject":
+      return zodToJsonSchema(z);
     default:
-      return {};
+      return withDescription({});
   }
 }

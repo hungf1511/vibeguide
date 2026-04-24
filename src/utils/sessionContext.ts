@@ -112,7 +112,7 @@ export function generateProgressSummary(ctx: SessionContext): string {
 
   // Trạng thái hiện tại
   const statusText = translateStatus(ctx.status);
-  parts.push(`Hiện tại đang ${statusText.toLowerCase()}.`);
+  parts.push(`Hiện tại ${statusText.toLowerCase()}.`);
 
   // File đã sửa
   if (ctx.filesChanged.length) {

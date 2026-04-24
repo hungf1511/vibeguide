@@ -2,6 +2,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { createHash, randomBytes } from "crypto";
+import { loadConfig, shouldIgnore } from "./configLoader.js";
 
 const SNAPSHOT_DIR = path.resolve(process.cwd(), "cache", "snapshots");
 
@@ -33,7 +34,11 @@ interface SnapshotFile {
   content: string;
 }
 
-function walkFiles(dir: string, base: string, result: string[]) {
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, "/");
+}
+
+function walkFiles(dir: string, base: string, result: string[], ignorePatterns: string[]) {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -45,8 +50,9 @@ function walkFiles(dir: string, base: string, result: string[]) {
     if (entry.name === "node_modules" || entry.name === ".git" || entry.name === "dist" || entry.name === "build" || entry.name === ".next" || entry.name === ".cache" || entry.name === "coverage") continue;
     const full = path.join(dir, entry.name);
     const rel = base ? `${base}/${entry.name}` : entry.name;
+    if (shouldIgnore(normalizePath(rel), ignorePatterns)) continue;
     if (entry.isDirectory()) {
-      walkFiles(full, rel, result);
+      walkFiles(full, rel, result, ignorePatterns);
     } else {
       result.push(rel);
     }
@@ -56,7 +62,8 @@ function walkFiles(dir: string, base: string, result: string[]) {
 export function createSnapshot(repo: string, label?: string): SnapshotData {
   ensureSnapshotDir();
   const files: string[] = [];
-  walkFiles(repo, "", files);
+  const ignorePatterns = loadConfig(repo).ignorePatterns;
+  walkFiles(repo, "", files, ignorePatterns);
 
   const snapshotFiles: SnapshotFile[] = [];
   for (const file of files) {
@@ -111,11 +118,27 @@ export function getSnapshot(repo: string, snapshotId: string): SnapshotData | nu
   }
 }
 
-export function restoreSnapshot(repo: string, snapshotId: string): { restored: boolean; filesChanged: number } {
+export function restoreSnapshot(repo: string, snapshotId: string): { restored: boolean; filesChanged: number; filesDeleted: number } {
   const snapshot = getSnapshot(repo, snapshotId);
-  if (!snapshot) return { restored: false, filesChanged: 0 };
+  if (!snapshot) return { restored: false, filesChanged: 0, filesDeleted: 0 };
 
   let filesChanged = 0;
+  let filesDeleted = 0;
+  const snapshotPaths = new Set(snapshot.files.map((file) => file.path));
+
+  const currentFiles: string[] = [];
+  const ignorePatterns = loadConfig(repo).ignorePatterns;
+  walkFiles(repo, "", currentFiles, ignorePatterns);
+  for (const file of currentFiles) {
+    if (snapshotPaths.has(file)) continue;
+    try {
+      fs.unlinkSync(path.join(repo, file));
+      filesDeleted++;
+    } catch {
+      // Skip files that cannot be removed.
+    }
+  }
+
   for (const file of snapshot.files) {
     const fullPath = path.join(repo, file.path);
     try {
@@ -136,5 +159,5 @@ export function restoreSnapshot(repo: string, snapshotId: string): { restored: b
     }
   }
 
-  return { restored: true, filesChanged };
+  return { restored: true, filesChanged, filesDeleted };
 }

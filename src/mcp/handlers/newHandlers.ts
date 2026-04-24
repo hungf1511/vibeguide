@@ -91,12 +91,14 @@ export async function handleReviewPr(args: { repoPath?: string; filePath?: strin
 
   // 1. TypeCheck
   const tc = runTypeCheck(repo);
+  const typeStatus: ReviewPrResult["sections"][number]["status"] = tc.passed ? "ok" : tc.errorCount > 0 ? "block" : "warn";
   sections.push({
     name: "TypeScript",
-    status: tc.passed ? "ok" : "block",
+    status: typeStatus,
     detail: tc.summary,
   });
-  if (!tc.passed) blockers.push("TypeScript: " + tc.errorCount + " loi compile");
+  if (!tc.passed && tc.errorCount > 0) blockers.push("TypeScript: " + tc.errorCount + " loi compile");
+  else if (!tc.passed) warnings.push("TypeScript: khong chay duoc compiler");
 
   // 2. Heuristic bugs
   const bug = await handleHeuristicBug({ symptom: "potential issues", repoPath: repo });

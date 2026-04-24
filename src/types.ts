@@ -94,6 +94,7 @@ export interface SnapshotResult {
   label?: string;
   restored?: boolean;
   filesChanged?: number;
+  filesDeleted?: number;
   snapshots?: { id: string; label?: string; timestamp: string; fileCount: number }[];
 }
 

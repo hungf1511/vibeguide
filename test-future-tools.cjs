@@ -5,6 +5,8 @@
 
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+const fs = require('fs');
+const path = require('path');
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -36,6 +38,9 @@ async function runTests() {
   await client.connect(transport);
 
   const repo = './test-project';
+  const packagePath = path.join(repo, 'package.json');
+  const tempFilePath = path.join(repo, 'src', 'pages', 'TempAfterSnapshot.tsx');
+  const originalPackage = fs.readFileSync(packagePath, 'utf-8');
 
   // --- TEST 1: snapshot create ---
   console.log(`${CYAN}--- TEST 1: vibeguide_snapshot create ---${RESET}`);
@@ -48,6 +53,9 @@ async function runTests() {
   assert(snapResult.fileCount > 0, `Snapshot có ${snapResult.fileCount} files`);
   assert(snapResult.label === 'test-snapshot', 'Label đúng');
   console.log(`  → Snapshot ID: ${snapResult.snapshotId}, Files: ${snapResult.fileCount}\n`);
+
+  fs.writeFileSync(packagePath, originalPackage.replace('"version": "1.0.0"', '"version": "1.0.1"'), 'utf-8');
+  fs.writeFileSync(tempFilePath, 'export function TempAfterSnapshot() { return null; }\n', 'utf-8');
 
   // --- TEST 2: snapshot list ---
   console.log(`${CYAN}--- TEST 2: vibeguide_snapshot list ---${RESET}`);
@@ -69,7 +77,11 @@ async function runTests() {
   const restoreResult = JSON.parse(restore.content[0].text);
   assert(restoreResult.restored === true, 'Restore thành công');
   assert(typeof restoreResult.filesChanged === 'number', 'Có filesChanged');
-  console.log(`  → Restored: ${restoreResult.restored}, Files changed: ${restoreResult.filesChanged}\n`);
+  assert(restoreResult.filesChanged >= 1, 'Restore ghi đè file đã sửa');
+  assert(restoreResult.filesDeleted >= 1, 'Restore xóa file mới tạo sau snapshot');
+  assert(fs.readFileSync(packagePath, 'utf-8') === originalPackage, 'package.json được khôi phục');
+  assert(!fs.existsSync(tempFilePath), 'File mới sau snapshot đã bị xóa');
+  console.log(`  → Restored: ${restoreResult.restored}, Files changed: ${restoreResult.filesChanged}, Files deleted: ${restoreResult.filesDeleted}\n`);
 
   // --- TEST 4: diff_summary since=last ---
   console.log(`${CYAN}--- TEST 4: vibeguide_diff_summary ---${RESET}`);
@@ -81,6 +93,7 @@ async function runTests() {
   assert(typeof diffResult.summary === 'string', 'Có summary string');
   assert(Array.isArray(diffResult.filesChanged), 'Có filesChanged array');
   assert(typeof diffResult.riskAssessment === 'string', 'Có riskAssessment');
+  assert(diffResult.totalFiles === 0, 'Sau restore không còn diff so với snapshot mới nhất');
   console.log(`  → Summary: ${diffResult.summary}`);
   console.log(`  → Files changed: ${diffResult.filesChanged.length}\n`);
 

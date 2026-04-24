@@ -49,6 +49,10 @@ async function runTests() {
   assert(tools.tools.some(t => t.name === 'vibeguide_smart_route'), 'Có tool vibeguide_smart_route');
   assert(tools.tools.some(t => t.name === 'vibeguide_session_status'), 'Có tool vibeguide_session_status');
   assert(tools.tools.some(t => t.name === 'vibeguide_export_report'), 'Có tool vibeguide_export_report');
+  const snapshotTool = tools.tools.find(t => t.name === 'vibeguide_snapshot');
+  const snapshotAction = snapshotTool.inputSchema.properties.action;
+  assert(Array.isArray(snapshotAction.enum) && snapshotAction.enum.includes('restore'), 'Schema snapshot.action có enum hợp lệ');
+  assert(snapshotAction.default === 'create', 'Schema snapshot.action có default create');
 
   // ─── TEST 2: Scan repo ─────────────────────────────────────
   console.log('\n--- TEST 2: vibeguide_scan_repo ---');
@@ -155,6 +159,7 @@ async function runTests() {
   assert(Array.isArray(changelog.commits), 'Có commits array');
   assert(Array.isArray(changelog.files), 'Có files array');
   assert(Array.isArray(changelog.features), 'Có features array');
+  assert(changelog.commits.length === 0 || /^[0-9a-f]{7,}\s+.+/.test(changelog.commits[0]), 'Commit gần đây có dạng git log --oneline');
 
   // ─── TEST 13: Smart route ───────────────────────────────────
   console.log('\n--- TEST 13: vibeguide_smart_route ---');
