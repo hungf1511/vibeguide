@@ -40,7 +40,7 @@ function parsePorcelain(output: string): BlameEntry[] {
       i++;
 
       // Read metadata lines (indented, not SHA-prefixed)
-      while (i < lines.length && lines[i] && !lines[i].match(/^\t/) && !lines[i].match(/^[a-f0-9]/)) {
+      while (i < lines.length && lines[i] && !lines[i].match(/^\t/) && !isHeaderLine(lines[i])) {
         const metaLine = lines[i];
         if (metaLine.startsWith("author ")) author = metaLine.slice(7);
         if (metaLine.startsWith("author-time ")) date = new Date(parseInt(metaLine.slice(12), 10) * 1000).toISOString();
@@ -57,4 +57,8 @@ function parsePorcelain(output: string): BlameEntry[] {
     }
   }
   return result;
+}
+
+function isHeaderLine(line: string): boolean {
+  return /^([a-f0-9]+)\s+(\d+)\s+(\d+)\s+(\d+)/.test(line);
 }

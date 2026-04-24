@@ -10,6 +10,7 @@
     "test:coverage": "vitest run --coverage",
     "build": "tsc",
     "check": "node scripts/self-check.mjs",
+    "bench": "node scripts/benchmark.mjs",
     "dev": "tsc --watch",
     "start": "node dist/mcp/server.js"
   },

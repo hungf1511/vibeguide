@@ -52,7 +52,7 @@ export async function handleGitLog(args: { repoPath?: string; count?: number; si
 
   let commits: GitLogResult["commits"];
   if (showFiles) {
-    const raw = getLogWithFiles(repo, count);
+    const raw = getLogWithFiles(repo, count, since, until);
     commits = raw.map((c: CommitWithFiles) => ({
       sha: c.sha,
       shortSha: c.shortSha,

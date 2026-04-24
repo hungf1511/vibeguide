@@ -2,11 +2,17 @@
 import { z } from "zod";
 
 const repoPathSchema = z.string().optional().describe("Absolute path to the repository. Defaults to current working directory.");
+const scopeSchema = z.object({
+  paths: z.array(z.string()).optional().describe("Limit analysis to these repo-relative paths."),
+  since: z.string().optional().describe("Limit analysis to files changed after this git date/revision."),
+  until: z.string().optional().describe("Limit analysis to files changed before this git date/revision."),
+}).optional().describe("Optional analysis scope for large repos.");
 
 export const schemas: Record<string, z.ZodTypeAny> = {
   vibeguide_impact: z.object({
     filePath: z.string().describe("Path to the file being changed."),
     repoPath: repoPathSchema,
+    scope: scopeSchema,
   }),
   vibeguide_trace_journey: z.object({
     journey: z.string().describe("User journey description, e.g. 'user clicks Pay button'"),
@@ -22,6 +28,7 @@ export const schemas: Record<string, z.ZodTypeAny> = {
   }),
   vibeguide_scan_repo: z.object({
     repoPath: repoPathSchema,
+    scope: scopeSchema,
   }),
   vibeguide_test_plan: z.object({
     feature: z.string().describe("Feature name to generate test plan for."),
@@ -44,6 +51,7 @@ export const schemas: Record<string, z.ZodTypeAny> = {
   }),
   vibeguide_get_deps: z.object({
     repoPath: repoPathSchema,
+    scope: scopeSchema,
   }),
   vibeguide_snapshot: z.object({
     repoPath: repoPathSchema,
@@ -75,6 +83,7 @@ export const schemas: Record<string, z.ZodTypeAny> = {
   vibeguide_dependency_graph: z.object({
     repoPath: repoPathSchema,
     format: z.enum(["mermaid", "json"]).optional().default("mermaid").describe("Output format: mermaid (default) or json."),
+    scope: scopeSchema,
   }),
   vibeguide_smart_route: z.object({
     situation: z.string().describe("Mô tả tình huống hiện tại, vd: 'UI chậm khi load trang', 'nút Thanh toán không ăn', 'deploy bị lỗi'"),

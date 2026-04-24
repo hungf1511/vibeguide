@@ -42,8 +42,8 @@ async function main() {
   fs.mkdirSync(path.dirname(baselinePath), { recursive: true });
   const baseline = bench.tasks.map((t) => ({
     name: t.name,
-    meanMs: t.result?.mean ? t.result.mean * 1000 : null,
-    p75Ms: t.result?.p75 ? t.result.p75 * 1000 : null,
+    meanMs: t.result?.latency.mean ?? null,
+    p75Ms: t.result?.latency.p75 ?? null,
   }));
   fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2), "utf-8");
   console.log("Baseline saved to", baselinePath);

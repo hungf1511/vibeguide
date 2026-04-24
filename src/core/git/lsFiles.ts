@@ -7,6 +7,12 @@ import { loadConfig, shouldIgnore } from "../../utils/configLoader.js";
 const EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".py", ".go", ".rs", ".java", ".kt", ".swift"]);
 const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", "cache", "coverage"]);
 
+export interface FileScope {
+  paths?: string[];
+  since?: string;
+  until?: string;
+}
+
 /** Normalize path separators to forward slashes */
 export function normalizePath(p: string): string {
   return p.replace(/\\/g, "/");
@@ -30,31 +36,32 @@ function isGitRepoCached(dir: string): boolean {
 const lsFilesCache = new Map<string, string[]>();
 
 /** List all source files — uses git ls-files when in a git repo, falls back to fs walk */
-export function lsFiles(dir: string): string[] {
-  if (lsFilesCache.has(dir)) {
-    return lsFilesCache.get(dir)!;
+export function lsFiles(dir: string, scope?: FileScope): string[] {
+  const cacheKey = scope ? `${dir}:${JSON.stringify(scope)}` : dir;
+  if (lsFilesCache.has(cacheKey)) {
+    return lsFilesCache.get(cacheKey)!;
   }
-  const result = isGitRepoCached(dir) ? lsFilesGit(dir) : lsFilesWalk(dir);
-  lsFilesCache.set(dir, result);
+  const result = isGitRepoCached(dir) ? lsFilesGit(dir, scope) : lsFilesWalk(dir, scope);
+  lsFilesCache.set(cacheKey, result);
   return result;
 }
 
 /** Use git ls-files -co --exclude-standard for tracked + untracked files */
-function lsFilesGit(dir: string): string[] {
+function lsFilesGit(dir: string, scope?: FileScope): string[] {
   try {
-    const output = runGit(dir, ["ls-files", "-co", "--exclude-standard"]);
+    const output = scope?.since || scope?.until
+      ? runScopedGitLog(dir, scope)
+      : runGit(dir, ["ls-files", "-co", "--exclude-standard"]);
     const files = output.split("\n").filter(Boolean);
     const ignorePatterns = getConfiguredIgnorePatterns(dir);
-    return files
-      .filter((f) => EXTS.has(path.extname(f)))
-      .filter((f) => !isIgnoredPath(f, ignorePatterns));
+    return filterSourceFiles(files, ignorePatterns, scope);
   } catch {
-    return lsFilesWalk(dir);
+    return lsFilesWalk(dir, scope);
   }
 }
 
 /** Fallback fs walk (non-git repos) */
-function lsFilesWalk(dir: string): string[] {
+function lsFilesWalk(dir: string, scope?: FileScope): string[] {
   const files: string[] = [];
   const ignorePatterns = getConfiguredIgnorePatterns(dir);
   function walk(current: string, rel: string) {
@@ -72,12 +79,37 @@ function lsFilesWalk(dir: string): string[] {
       if (entry.isDirectory()) {
         walk(path.join(current, entry.name), childRel);
       } else if (EXTS.has(path.extname(entry.name))) {
-        files.push(childRel);
+        files.push(normalizePath(childRel));
       }
     }
   }
   walk(dir, "");
-  return files;
+  return filterSourceFiles(files, ignorePatterns, scope);
+}
+
+function runScopedGitLog(dir: string, scope: FileScope): string {
+  const args = ["log", "--name-only", "--pretty=format:"];
+  if (scope.since) args.push("--since", scope.since);
+  if (scope.until) args.push("--until", scope.until);
+  return runGit(dir, args);
+}
+
+function filterSourceFiles(files: string[], ignorePatterns: string[], scope?: FileScope): string[] {
+  const seen = new Set<string>();
+  const scopePaths = (scope?.paths || []).map(normalizePath).map((p) => p.replace(/\/$/, ""));
+  for (const file of files.map(normalizePath)) {
+    if (seen.has(file)) continue;
+    if (!EXTS.has(path.extname(file))) continue;
+    if (isDefaultIgnoredPath(file)) continue;
+    if (isIgnoredPath(file, ignorePatterns)) continue;
+    if (scopePaths.length > 0 && !scopePaths.some((p) => file === p || file.startsWith(`${p}/`))) continue;
+    seen.add(file);
+  }
+  return [...seen].sort();
+}
+
+function isDefaultIgnoredPath(filePath: string): boolean {
+  return normalizePath(filePath).split("/").some((part) => IGNORE.has(part));
 }
 
 function getConfiguredIgnorePatterns(dir: string): string[] {

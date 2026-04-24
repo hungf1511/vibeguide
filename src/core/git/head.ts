@@ -47,13 +47,45 @@ export function getCacheSignature(dir: string): string {
     const hash = createHash("sha256");
     hash.update(head.sha);
     if (!head.isClean) {
-      const status = runGit(dir, ["status", "--porcelain"]);
-      hash.update(status);
+      hashDirtyState(dir, hash);
     }
     return hash.digest("hex").slice(0, 16);
   } catch {
     return getFallbackSignature(dir);
   }
+}
+
+function hashDirtyState(dir: string, hash: ReturnType<typeof createHash>): void {
+  const status = runGit(dir, ["status", "--porcelain=v1", "-z"]);
+  hash.update(status);
+
+  const dirtyFiles = new Set<string>();
+  for (const args of [
+    ["diff", "--name-only", "-z"],
+    ["diff", "--cached", "--name-only", "-z"],
+    ["ls-files", "-o", "--exclude-standard", "-z"],
+  ]) {
+    for (const file of splitNul(runGit(dir, args))) {
+      dirtyFiles.add(file);
+    }
+  }
+
+  for (const file of [...dirtyFiles].sort()) {
+    const repoRoot = path.resolve(dir);
+    const fullPath = path.resolve(repoRoot, file);
+    const rel = path.relative(repoRoot, fullPath);
+    if (rel.startsWith("..") || path.isAbsolute(rel)) continue;
+    hash.update(file);
+    try {
+      hash.update(fs.readFileSync(fullPath));
+    } catch {
+      hash.update("<deleted>");
+    }
+  }
+}
+
+function splitNul(output: string): string[] {
+  return output.split("\0").filter(Boolean);
 }
 
 /** Fallback: mtime-based signature for non-git repos */

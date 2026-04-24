@@ -41,7 +41,10 @@ describe("snapshot", () => {
     const snap = createSnapshot(FIXTURE);
     const list = listSnapshots(FIXTURE);
     expect(list.length).toBeGreaterThan(0);
-    expect(list[0].snapshotId).toBe(snap.snapshotId);
+    expect(list.some((item) => item.snapshotId === snap.snapshotId)).toBe(true);
+    for (let i = 1; i < list.length; i++) {
+      expect(new Date(list[i - 1].timestamp).getTime()).toBeGreaterThanOrEqual(new Date(list[i].timestamp).getTime());
+    }
   });
 
   it("gets snapshot by id", () => {

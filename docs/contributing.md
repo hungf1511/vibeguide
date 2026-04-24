@@ -21,7 +21,7 @@ npm test
 npm run test:coverage
 
 # Run benchmark
-npx tsx tests/benchmarks/scan.bench.ts
+npm run bench
 
 # Self-check (dogfood)
 npm run check

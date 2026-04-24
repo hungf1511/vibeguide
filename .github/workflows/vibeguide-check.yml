@@ -2,9 +2,9 @@ name: VibeGuide Check
 
 on:
   push:
-    branches: [main]
+    branches: [main, v2-dev]
   pull_request:
-    branches: [main]
+    branches: [main, v2-dev]
 
 jobs:
   check:
@@ -26,20 +26,17 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Run unit and integration tests
+        run: npm test
+
+      - name: Run coverage gate
+        run: npm run test:coverage
+
+      - name: Save benchmark baseline
+        run: npm run bench
+
       - name: VibeGuide self-check (dogfooding)
         run: npm run check
-
-      - name: Run MCP tests
-        run: node test-mcp.cjs
-
-      - name: Run scenario tests
-        run: node test-scenario.cjs
-
-      - name: Run batch 2 tests
-        run: node test-batch2.cjs
-
-      - name: Run future tools tests
-        run: node test-future-tools.cjs
 
       - name: Upload test results
         if: failure()
@@ -47,5 +44,6 @@ jobs:
         with:
           name: test-results
           path: |
-            test-*.cjs
+            coverage/
             dist/
+            cache/baseline.json

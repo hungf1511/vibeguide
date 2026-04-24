@@ -12,7 +12,7 @@ export interface CommitInfo {
 
 /** Format for machine-readable git log output */
 const LOG_FORMAT = [
-  "--format=---COMMIT---",
+  "---COMMIT---",
   "%H",       // full SHA
   "%h",       // short SHA
   "%an",      // author name
@@ -67,11 +67,15 @@ export interface CommitWithFiles extends CommitInfo {
 }
 
 /** Get log with changed files per commit (uses --name-status) */
-export function getLogWithFiles(dir: string, count = 20): CommitWithFiles[] {
+export function getLogWithFiles(dir: string, count = 20, since?: string, until?: string): CommitWithFiles[] {
   if (!isGitRepo(dir)) return [];
 
   try {
-    const output = runGit(dir, ["log", "--name-status", `--format=${LOG_FORMAT}`, `-${count}`]);
+    const args = ["log", "--name-status", `--format=${LOG_FORMAT}`];
+    if (since) args.push("--since", since);
+    if (until) args.push("--until", until);
+    args.push(`-${count}`);
+    const output = runGit(dir, args);
     return parseLogWithFiles(output.trim());
   } catch {
     return [];
@@ -87,6 +91,7 @@ function parseLogWithFiles(output: string): CommitWithFiles[] {
     const shortSha = lines[1] || "";
     const author = lines[2] || "";
     const date = lines[3] || "";
+    const refName = lines[4] || "";
     const subject = lines[5] || "";
     const files: { changeType: string; changedFile: string }[] = [];
     for (let i = 6; i < lines.length; i++) {
@@ -97,9 +102,15 @@ function parseLogWithFiles(output: string): CommitWithFiles[] {
         files.push({ changeType: parts[0], changedFile: parts[parts.length - 1] });
       }
     }
-    const commit: any = { sha, shortSha, author, date, message: subject };
-    commit.files = files;
-    return commit;
+    return {
+      sha,
+      shortSha,
+      author,
+      date,
+      refName: refName || undefined,
+      message: subject,
+      files,
+    };
   });
 }
 

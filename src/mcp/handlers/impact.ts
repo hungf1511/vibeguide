@@ -8,15 +8,16 @@ import { getIfFresh as getCacheFresh, set as setCache } from "../../utils/cache.
 import { createSnapshot } from "../../utils/snapshot.js";
 import { loadConfig, getEntryPointPatterns } from "../../utils/configLoader.js";
 import type { DepGraph } from "../../types.js";
+import type { FileScope } from "../../core/git/index.js";
 
-export async function handleImpact(args: { filePath: string; repoPath?: string }): Promise<ImpactResult> {
+export async function handleImpact(args: { filePath: string; repoPath?: string; scope?: FileScope }): Promise<ImpactResult> {
   const repo = resolveRepo(args.repoPath);
   let autoSnapshotId: string | undefined;
   try {
     const snap = createSnapshot(repo, `auto-before-impact-${args.filePath.replace(/[/\\]/g, "-")}`);
     autoSnapshotId = snap.snapshotId;
   } catch { /* snapshot optional */ }
-  const deps = getCachedDeps(repo);
+  const deps = getCachedDeps(repo, args.scope);
   const direct: ImpactResult["affectedFiles"] = [];
   const indirect: ImpactResult["indirectFiles"] = [];
   const features: Set<string> = new Set();
@@ -127,7 +128,10 @@ export async function handleRegression(args: { changedFiles: string[]; repoPath?
   return { testFlows: flows, passed: flows.every((f) => f.passed) };
 }
 
-export function getCachedDeps(repo: string): DepGraph {
+export function getCachedDeps(repo: string, scope?: FileScope): DepGraph {
+  if (scope && (scope.paths?.length || scope.since || scope.until)) {
+    return scanDependencies(repo, scope);
+  }
   const signature = getRepoSignature(repo);
   const fresh = getCacheFresh(repo, signature);
   if (fresh && Array.isArray(fresh.nodes) && Array.isArray(fresh.edges)) {

@@ -5,6 +5,7 @@ import { execFileSync } from "child_process";
 import type { TreeNode, DepGraph, DepEdge } from "../types.js";
 import { loadConfig, shouldIgnore } from "./configLoader.js";
 import { lsFiles, getCacheSignature, normalizePath as gitNormalizePath } from "../core/git/index.js";
+import type { FileScope } from "../core/git/index.js";
 
 const EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".py", ".go", ".rs"]);
 const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", "cache", "coverage"]);
@@ -18,8 +19,8 @@ export function normalizePath(p: string): string {
  * List ALL source files matching EXTS in repo.
  * Uses git ls-files when in a git repo (fast, respects .gitignore), falls back to fs walk.
  */
-export function getAllSourceFiles(dir: string): string[] {
-  return lsFiles(dir);
+export function getAllSourceFiles(dir: string, scope?: FileScope): string[] {
+  return lsFiles(dir, scope);
 }
 
 /**
@@ -76,9 +77,9 @@ function isIgnoredPath(filePath: string, patterns: string[]): boolean {
   return shouldIgnore(normalizePath(filePath), patterns);
 }
 
-export function scanDependencies(dir: string): DepGraph {
+export function scanDependencies(dir: string, scope?: FileScope): DepGraph {
   const edges: DepEdge[] = [];
-  const fileSet = new Set<string>(getAllSourceFiles(dir));
+  const fileSet = new Set<string>(getAllSourceFiles(dir, scope));
   const nodes: string[] = Array.from(fileSet);
 
   // Load path aliases from tsconfig.json / jsconfig.json

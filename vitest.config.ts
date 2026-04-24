@@ -6,13 +6,13 @@ export default defineConfig({
     environment: "node",
     coverage: {
       provider: "v8",
-      reporter: ["text", "json", "html"],
-      // Threshold intentionally low for Phase 0; raise to 70% as test suite grows
+      reporter: ["text", "json", "json-summary", "html"],
+      // P0 exit criteria: keep coverage gate meaningful for the self-dogfood suite.
       thresholds: {
-        lines: 10,
-        functions: 10,
-        branches: 5,
-        statements: 10,
+        lines: 70,
+        functions: 70,
+        branches: 60,
+        statements: 70,
       },
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.d.ts", "src/mcp/server.ts"],

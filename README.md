@@ -174,17 +174,17 @@ Các trường quan trọng:
 
 ```bash
 npm run build
+npm test
+npm run test:coverage
+npm run bench
 npm run check
-node test-mcp.cjs
-node test-scenario.cjs
-node test-future-tools.cjs
-node test-batch2.cjs
 ```
 
 Bộ test hiện kiểm tra:
 
-- MCP server expose đủ 34 tools.
-- `test-mcp.cjs` hiện có 60 assertion cho tool list, schema, analyzer và smart routing.
+- MCP registry expose đủ tool theo schema hiện tại, không hard-code số lượng.
+- Git-native scanner/log/status/cache, bao gồm scope theo path và loại artifact `coverage/`.
+- Coverage gate P0: lines/statements/functions >= 70%, branches >= 60%.
 - Zod schema chuyển sang JSON Schema đúng enum/default/literal/nested object.
 - Tool registry được tách khỏi schema/description/output compression để giảm complexity.
 - `vibeguide_dead_code` tránh false-positive từ comment, type-only usage và text trong re-export.
@@ -263,9 +263,10 @@ jobs:
         with: { node-version: '20' }
       - run: npm ci
       - run: npm run build
+      - run: npm test
+      - run: npm run test:coverage
+      - run: npm run bench
       - run: npm run check
-      - run: node test-mcp.cjs
-      - run: node test-future-tools.cjs
 ```
 
 ## Tech Stack
@@ -276,6 +277,7 @@ jobs:
 - MCP registry tách schema, description, output compression và Zod JSON Schema conversion.
 - JSON cache/session/snapshot, không cần database.
 - SHA-256 checksum cho snapshot.
+- Git-native scanner/log/status/cache cho Phase 1.
 - Dogfooding bằng chính MCP tools của VibeGuide.
 
 ## License

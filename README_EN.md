@@ -174,17 +174,17 @@ Important fields:
 
 ```bash
 npm run build
+npm test
+npm run test:coverage
+npm run bench
 npm run check
-node test-mcp.cjs
-node test-scenario.cjs
-node test-future-tools.cjs
-node test-batch2.cjs
 ```
 
 The test suite verifies:
 
-- The MCP server exposes all 34 tools.
-- `test-mcp.cjs` now has 60 assertions for tool listing, schema conversion, analyzers, and smart routing.
+- The MCP registry exposes every current schema-backed tool without hard-coded counts.
+- Git-native scanner/log/status/cache behavior, including path scope and generated `coverage/` exclusion.
+- P0 coverage gate: lines/statements/functions >= 70%, branches >= 60%.
 - Zod schemas are converted to JSON Schema with enum/default/literal/nested object support.
 - The tool registry is split from schema, description, and output-compression helpers to reduce complexity.
 - `vibeguide_dead_code` avoids false positives from comments, type-only usage, and re-export text.
@@ -263,9 +263,10 @@ jobs:
         with: { node-version: '20' }
       - run: npm ci
       - run: npm run build
+      - run: npm test
+      - run: npm run test:coverage
+      - run: npm run bench
       - run: npm run check
-      - run: node test-mcp.cjs
-      - run: node test-future-tools.cjs
 ```
 
 ## Tech Stack
@@ -276,6 +277,7 @@ jobs:
 - MCP registry split into schema, description, output-compression, and Zod JSON Schema conversion modules.
 - JSON cache/session/snapshot files, no database required.
 - SHA-256 checksums for snapshots.
+- Git-native scanner/log/status/cache for Phase 1.
 - Dogfooding with VibeGuide's own MCP tools.
 
 ## License
