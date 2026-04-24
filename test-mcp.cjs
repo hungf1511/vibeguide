@@ -40,7 +40,7 @@ async function runTests() {
   // ─── TEST 1: Liệt kê tools ─────────────────────────────────
   console.log('--- TEST 1: tools/list ---');
   const tools = await client.listTools();
-  assert(tools.tools.length === 20, `Có đúng 20 tools (hiện có: ${tools.tools.length})`);
+  assert(tools.tools.length === 34, `Có đúng 34 tools (hiện có: ${tools.tools.length})`);
   assert(tools.tools.some(t => t.name === 'vibeguide_impact'), 'Có tool vibeguide_impact');
   assert(tools.tools.some(t => t.name === 'vibeguide_scan_repo'), 'Có tool vibeguide_scan_repo');
   assert(tools.tools.some(t => t.name === 'vibeguide_suggest_fix'), 'Có tool vibeguide_suggest_fix');
@@ -178,6 +178,35 @@ async function runTests() {
   assert(typeof session.summary === 'string' && session.summary.length > 0, `Có summary: ${session.summary}`);
   assert(Array.isArray(session.timeline), 'Có timeline array');
   assert(typeof session.status === 'string', 'Có status string');
+
+  // ─── TEST 15: Type check ───────────────────────────────────
+  console.log('\n--- TEST 15: vibeguide_type_check ---');
+  const r14 = await client.callTool({
+    name: 'vibeguide_type_check',
+    arguments: { repoPath: '.' }
+  });
+  const tc = JSON.parse(r14.content[0].text);
+  assert(typeof tc.passed === 'boolean', 'Có passed boolean');
+  assert(typeof tc.errorCount === 'number', 'Có errorCount number');
+
+  // ─── TEST 16: Secret scan ─────────────────────────────────
+  console.log('\n--- TEST 16: vibeguide_secret_scan ---');
+  const r15 = await client.callTool({
+    name: 'vibeguide_secret_scan',
+    arguments: { repoPath: '.' }
+  });
+  const sec = JSON.parse(r15.content[0].text);
+  assert(Array.isArray(sec.findings), 'Có findings array');
+  assert(typeof sec.scannedFiles === 'number', 'Có scannedFiles number');
+
+  // ─── TEST 17: Smart route — type error keyword ──────────────
+  console.log('\n--- TEST 17: vibeguide_smart_route (type error) ---');
+  const r16 = await client.callTool({
+    name: 'vibeguide_smart_route',
+    arguments: { situation: 'lỗi kiểu TypeScript', repoPath: '.' }
+  });
+  const smart2 = JSON.parse(r16.content[0].text);
+  assert(smart2.vibeGuideTools.some(t => t.name === 'vibeguide_type_check'), 'Smart route gợi ý type_check cho lỗi kiểu');
 
   await client.close();
 

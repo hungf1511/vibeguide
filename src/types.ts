@@ -180,3 +180,125 @@ export interface ExportReportResult {
   filePath?: string;
   format: "markdown" | "json" | "text";
 }
+
+// --- New tool types ---
+export interface TypeCheckResult {
+  passed: boolean;
+  errorCount: number;
+  warningCount: number;
+  errors: TypeError[];
+  summary: string;
+  durationMs: number;
+}
+
+export interface TypeError {
+  file: string;
+  line: number;
+  column: number;
+  code: string;
+  message: string;
+  messageVi?: string;
+}
+
+export interface TestCoverageResult {
+  found: boolean;
+  source?: string;
+  totals?: { lines: number; branches: number; functions: number; statements: number };
+  weakFiles: { file: string; lines: number }[];
+  summary: string;
+}
+
+export interface CircularDepsResult {
+  cycleCount: number;
+  cycles: string[][];
+  summary: string;
+}
+
+export interface DeadCodeResult {
+  unusedExports: { file: string; symbol: string }[];
+  orphanFiles: string[];
+  summary: string;
+}
+
+export interface ComplexityResult {
+  files: { file: string; loc: number; cyclomatic: number; flagged: boolean; reason?: string }[];
+  summary: string;
+  thresholdLoc: number;
+  thresholdComplexity: number;
+}
+
+export interface A11yIssue {
+  file: string;
+  line: number;
+  rule: string;
+  message: string;
+}
+
+export interface A11yResult {
+  issueCount: number;
+  issues: A11yIssue[];
+  summary: string;
+  scannedFiles: number;
+}
+
+export interface SecretFinding {
+  file: string;
+  line: number;
+  rule: string;
+  evidence: string;
+  severity: "low" | "medium" | "high" | "critical";
+}
+
+export interface SecretScanResult {
+  findings: SecretFinding[];
+  summary: string;
+  scannedFiles: number;
+}
+
+export interface I18nGapResult {
+  baseLocale: string;
+  locales: { locale: string; missingKeys: string[]; extraKeys: string[] }[];
+  summary: string;
+}
+
+export interface DocGapResult {
+  filesMissingDoc: string[];
+  foldersMissingReadme: string[];
+  exportsMissingJsdoc: { file: string; symbol: string }[];
+  summary: string;
+}
+
+export interface PerfBudgetResult {
+  found: boolean;
+  bundles: { file: string; sizeKb: number; budgetKb?: number; overBudget?: boolean }[];
+  summary: string;
+}
+
+export interface MonorepoRouteResult {
+  isMonorepo: boolean;
+  manager?: string;
+  packages: { name: string; path: string; affectedBy?: string[] }[];
+  summary: string;
+}
+
+export interface ReviewPrResult {
+  passed: boolean;
+  blockers: string[];
+  warnings: string[];
+  sections: { name: string; status: "ok" | "warn" | "block"; detail: string }[];
+  summary: string;
+  founderBrief: string;
+}
+
+export interface FounderBriefResult {
+  brief: string;
+  highlights: string[];
+  nextSteps: string[];
+}
+
+export interface MeetingNotesResult {
+  done: string[];
+  inProgress: string[];
+  blockers: string[];
+  notes: string;
+}

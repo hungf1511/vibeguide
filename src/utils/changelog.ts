@@ -1,3 +1,4 @@
+/** Sinh changelog tiếng Việt từ git history. */
 import { execFileSync } from "child_process";
 
 export interface ChangelogEntry {

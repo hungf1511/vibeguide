@@ -1,10 +1,53 @@
+/** Repo scanner — liệt kê file, dependency graph, git status, path normalization. */
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
 import type { TreeNode, DepGraph, DepEdge } from "../types.js";
 
-const EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".vue", ".py", ".go", ".rs"]);
+const EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".py", ".go", ".rs"]);
 const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", "cache", "coverage"]);
+
+/** Convert any path separator to forward slash for cross-platform consistency */
+export function normalizePath(p: string): string {
+  return p.replace(/\\/g, "/");
+}
+
+/** List ALL source files matching EXTS in repo (used by scanners that should not depend on dep edges). */
+export function getAllSourceFiles(dir: string): string[] {
+  const files: string[] = [];
+  function walk(current: string, rel: string) {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith(".") && entry.name !== ".env") continue;
+      if (IGNORE.has(entry.name)) continue;
+      const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(path.join(current, entry.name), childRel);
+      } else if (EXTS.has(path.extname(entry.name))) {
+        files.push(childRel);
+      }
+    }
+  }
+  walk(dir, "");
+  return files;
+}
+
+/** Compute a stable signature of repo source state (count + total mtime) for cache invalidation. */
+export function getRepoSignature(dir: string): string {
+  const files = getAllSourceFiles(dir);
+  let totalMtime = 0;
+  for (const f of files) {
+    try {
+      totalMtime += fs.statSync(path.join(dir, f)).mtimeMs;
+    } catch { /* ignore */ }
+  }
+  return `${files.length}-${Math.floor(totalMtime)}`;
+}
 
 export function scanDirectory(dir: string): TreeNode[] {
   const result: TreeNode[] = [];
@@ -38,33 +81,9 @@ export function scanDirectory(dir: string): TreeNode[] {
 }
 
 export function scanDependencies(dir: string): DepGraph {
-  const nodes: string[] = [];
   const edges: DepEdge[] = [];
-  const fileSet = new Set<string>();
-
-  function collectFiles(current: string, rel: string) {
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(current, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
-    for (const entry of entries) {
-      if (entry.name.startsWith(".") && entry.name !== ".env") continue;
-      if (IGNORE.has(entry.name)) continue;
-
-      const childRel = rel ? `${rel}/${entry.name}` : entry.name;
-      if (entry.isDirectory()) {
-        collectFiles(path.join(current, entry.name), childRel);
-      } else if (EXTS.has(path.extname(entry.name))) {
-        fileSet.add(childRel);
-      }
-    }
-  }
-
-  collectFiles(dir, "");
-  nodes.push(...fileSet);
+  const fileSet = new Set<string>(getAllSourceFiles(dir));
+  const nodes: string[] = Array.from(fileSet);
 
   // Load path aliases from tsconfig.json / jsconfig.json
   const aliases = loadPathAliases(dir);

@@ -2,7 +2,7 @@
 
 [🇻🇳 Tiếng Việt](README.md) | [🇺🇸 English](README_EN.md)
 
-VibeGuide bridges the gap between AI Developer (Claude Code) and Non-Tech Founder to break the endless fix-code loop. It provides 20 MCP tools that help AI understand codebases, assess risks, plan tests, and recommend appropriate Claude Code plugins — all output in plain language.
+VibeGuide bridges the gap between AI Developer (Claude Code) and Non-Tech Founder to break the endless fix-code loop. It provides 34 MCP tools that help AI understand codebases, assess risks, plan tests, and recommend appropriate Claude Code plugins — all output in plain language.
 
 ## Why VibeGuide?
 
@@ -13,7 +13,7 @@ When a Founder says "the Pay button doesn't work", AI Developer usually:
 
 VibeGuide solves all of this.
 
-## 20 Tools
+## 34 Tools
 
 ### Core — Understand the codebase
 - `vibeguide_scan_repo` — Scan repo structure, dependency graph
@@ -48,6 +48,24 @@ VibeGuide solves all of this.
 
 ### Smart Routing — Recommend Claude Code plugins
 - `vibeguide_smart_route` — Based on situation, recommend plugin + VibeGuide tools. Supports Vietnamese and English. Auto-detects installed plugins.
+
+### Quality & Compliance — Quality assurance
+- `vibeguide_type_check` — Run TypeScript type check, report errors
+- `vibeguide_test_coverage` — Read coverage report, list weak files
+- `vibeguide_circular_deps` — Find circular import cycles
+- `vibeguide_dead_code` — Find unused exports and orphan files
+- `vibeguide_complexity` — Analyze code complexity (LOC + cyclomatic)
+- `vibeguide_a11y_check` — Scan basic accessibility issues (alt, aria-label, href, label)
+- `vibeguide_secret_scan` — Scan secrets, API keys, credentials in source
+- `vibeguide_i18n_gap` — Find missing/extra translation keys across locales
+- `vibeguide_doc_gap` — Find files missing README and exports missing JSDoc
+- `vibeguide_perf_budget` — Check bundle sizes against performance budget
+
+### Monorepo & PR — Scale up
+- `vibeguide_monorepo_route` — Detect monorepo manager and affected packages
+- `vibeguide_review_pr` — Pre-merge checks: type, bug, secret, circular deps, impact
+- `vibeguide_founder_brief` — Generate founder-friendly weekly summary report
+- `vibeguide_meeting_notes` — Generate meeting notes from session context (done, in-progress, blockers)
 
 ## Configuration (`.vibeguide.json`)
 
@@ -120,7 +138,7 @@ Then type `/mcp` in Claude Code to connect.
 ## Testing
 
 ```bash
-node test-mcp.cjs          # 40 assertions — all tools
+node test-mcp.cjs          # 45 assertions — all tools
 node test-scenario.cjs     # Real-world scenario (payment button)
 node test-future-tools.cjs # Snapshot, diff summary, deploy check
 node test-batch2.cjs       # Suggest fix, changelog, dependency graph

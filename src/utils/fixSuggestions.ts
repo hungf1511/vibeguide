@@ -1,3 +1,4 @@
+/** Tạo concrete fix suggestion dựa trên bug pattern và dòng code. */
 import type { FixSuggestion } from "../types.js";
 
 export function generateSuggestion(content: string, patternId: string, line: number): FixSuggestion | null {

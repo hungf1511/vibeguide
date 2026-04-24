@@ -1,3 +1,4 @@
+/** Bug pattern definitions cho heuristic_bug scan. */
 export interface BugPattern {
   id: string;
   regex: RegExp;

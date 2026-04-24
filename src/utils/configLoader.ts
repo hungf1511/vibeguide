@@ -1,3 +1,4 @@
+/** Đọc .vibeguide.json và cung cấp defaults cho criticalFeatures, language, outputFormat. */
 import * as fs from "fs";
 import * as path from "path";
 

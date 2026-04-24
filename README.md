@@ -2,7 +2,7 @@
 
 [🇻🇳 Tiếng Việt](README.md) | [🇺🇸 English](README_EN.md)
 
-VibeGuide là cầu nối giữa AI Developer (Claude Code) và Non-Tech Founder để ngăn chặn vòng lặp fix-code mãi không dứt. Nó cung cấp 20 công cụ MCP giúp AI hiểu codebase, đánh giá rủi ro, lên kế hoạch test, và đề xuất plugin Claude Code phù hợp — tất cả output bằng tiếng Việt.
+VibeGuide là cầu nối giữa AI Developer (Claude Code) và Non-Tech Founder để ngăn chặn vòng lặp fix-code mãi không dứt. Nó cung cấp 34 công cụ MCP giúp AI hiểu codebase, đánh giá rủi ro, lên kế hoạch test, và đề xuất plugin Claude Code phù hợp — tất cả output bằng tiếng Việt.
 
 ## Tại sao cần VibeGuide?
 
@@ -13,7 +13,7 @@ Khi Founder báo "nút Thanh toán không ăn", AI Developer thường:
 
 VibeGuide giải quyết tất cả.
 
-## 20 Tools
+## 34 Tools
 
 ### Core — Hiểu codebase
 - `vibeguide_scan_repo` — Quét cấu trúc repo, dependency graph
@@ -48,6 +48,24 @@ VibeGuide giải quyết tất cả.
 
 ### Smart Routing — Gợi ý plugin Claude Code
 - `vibeguide_smart_route` — Dựa vào tình huống, recommend plugin + VibeGuide tools phù hợp. Hỗ trợ tiếng Việt và tiếng Anh. Tự động scan plugin đã cài.
+
+### Quality & Compliance — Đảm bảo chất lượng
+- `vibeguide_type_check` — Chạy TypeScript type check, báo lỗi bằng tiếng Việt
+- `vibeguide_test_coverage` — Đọc coverage report, liệt kê file yếu
+- `vibeguide_circular_deps` — Tìm vòng lặp import
+- `vibeguide_dead_code` — Tìm export không dùng và file orphan
+- `vibeguide_complexity` — Phân tích độ phức tạp code (LOC + cyclomatic)
+- `vibeguide_a11y_check` — Quét lỗi tiếp cận cơ bản (alt, aria-label, href, label)
+- `vibeguide_secret_scan` — Quét secret, API key, credential trong source
+- `vibeguide_i18n_gap` — Tìm key dịch thiếu/thừa giữa các locale
+- `vibeguide_doc_gap` — Tìm file thiếu README và export thiếu JSDoc
+- `vibeguide_perf_budget` — Kiểm tra kích thước bundle so với ngân sách
+
+### Monorepo & PR — Quy mô lớn
+- `vibeguide_monorepo_route` — Phát hiện monorepo manager và package bị ảnh hưởng
+- `vibeguide_review_pr` — Kiểm tra pre-merge: type, bug, secret, circular deps, impact
+- `vibeguide_founder_brief` — Tạo báo cáo tuần thân thiện cho Founder
+- `vibeguide_meeting_notes` — Tạo biên bản họp từ session context (done, in-progress, blockers)
 
 ## Cấu hình (`.vibeguide.json`)
 
@@ -120,7 +138,7 @@ Sau đó trong Claude Code gõ `/mcp` để kết nối.
 ## Kiểm thử
 
 ```bash
-node test-mcp.cjs          # 40 assertions — tất cả tools
+node test-mcp.cjs          # 45 assertions — tất cả tools
 node test-scenario.cjs     # Scenario thực tế (payment button)
 node test-future-tools.cjs # Snapshot, diff summary, deploy check
 node test-batch2.cjs       # Suggest fix, changelog, dependency graph

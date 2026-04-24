@@ -1,3 +1,4 @@
+/** Snapshot repo bằng SHA-256 hash trước khi sửa code. */
 import * as fs from "fs";
 import * as path from "path";
 import { createHash, randomBytes } from "crypto";

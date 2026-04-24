@@ -1,3 +1,4 @@
+/** Session tracking — lưu timeline, Founder decisions, test results vào ~/.vibeguide/session. */
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";

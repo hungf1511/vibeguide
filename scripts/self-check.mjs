@@ -6,7 +6,7 @@ import {
   handleDeployCheck,
 } from "../dist/mcp/handlers/handlers.js";
 
-const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..", "src");
 
 const RED = "\x1b[31m";
 const GREEN = "\x1b[32m";

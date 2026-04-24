@@ -1,3 +1,4 @@
+/** Central tool registry — định nghĩa 34 MCP tools với Zod schemas và bilingual descriptions. */
 import { z } from "zod";
 import {
   handleImpact,
@@ -20,6 +21,20 @@ import {
   handleSmartRoute,
   handleSessionStatus,
   handleExportReport,
+  handleTypeCheck,
+  handleTestCoverage,
+  handleCircularDeps,
+  handleDeadCode,
+  handleComplexity,
+  handleA11yCheck,
+  handleSecretScanV2,
+  handleI18nGap,
+  handleDocGap,
+  handlePerfBudget,
+  handleMonorepoRoute,
+  handleReviewPr,
+  handleFounderBrief,
+  handleMeetingNotes,
 } from "./handlers/index.js";
 import { logEvent } from "../utils/sessionContext.js";
 
@@ -69,20 +84,20 @@ const schemas: Record<string, z.ZodTypeAny> = {
   }),
   vibeguide_snapshot: z.object({
     repoPath: repoPathSchema,
-    action: z.enum(["create", "list", "restore"]).optional().describe("Action: create (default), list, or restore."),
+    action: z.enum(["create", "list", "restore"]).optional().default("create").describe("Action: create (default), list, or restore."),
     label: z.string().optional().describe("Optional label for the snapshot, e.g. 'before-fix-payment'."),
     snapshotId: z.string().optional().describe("Snapshot ID required for restore action."),
   }),
   vibeguide_diff_summary: z.object({
     repoPath: repoPathSchema,
-    since: z.enum(["git", "snapshot", "last"]).optional().describe("Compare against: git (default), snapshot, or last snapshot."),
+    since: z.enum(["git", "snapshot", "last"]).optional().default("git").describe("Compare against: git (default), snapshot, or last snapshot."),
     snapshotId: z.string().optional().describe("Snapshot ID required when since='snapshot'."),
   }),
   vibeguide_deploy_check: z.object({
     repoPath: repoPathSchema,
-    checkBugPatterns: z.boolean().optional().describe("Scan for bug patterns. Default true."),
-    checkUncommitted: z.boolean().optional().describe("Check for uncommitted git changes. Default true."),
-    checkOrphans: z.boolean().optional().describe("Check for orphaned files. Default true."),
+    checkBugPatterns: z.boolean().optional().default(true).describe("Scan for bug patterns. Default true."),
+    checkUncommitted: z.boolean().optional().default(true).describe("Check for uncommitted git changes. Default true."),
+    checkOrphans: z.boolean().optional().default(true).describe("Check for orphaned files. Default true."),
   }),
   vibeguide_suggest_fix: z.object({
     repoPath: repoPathSchema,
@@ -92,11 +107,11 @@ const schemas: Record<string, z.ZodTypeAny> = {
   }),
   vibeguide_changelog: z.object({
     repoPath: repoPathSchema,
-    count: z.number().optional().describe("Number of commits to include. Default 20."),
+    count: z.number().optional().default(20).describe("Number of commits to include. Default 20."),
   }),
   vibeguide_dependency_graph: z.object({
     repoPath: repoPathSchema,
-    format: z.enum(["mermaid", "json"]).optional().describe("Output format: mermaid (default) or json."),
+    format: z.enum(["mermaid", "json"]).optional().default("mermaid").describe("Output format: mermaid (default) or json."),
   }),
   vibeguide_smart_route: z.object({
     situation: z.string().describe("Mô tả tình huống hiện tại, vd: 'UI chậm khi load trang', 'nút Thanh toán không ăn', 'deploy bị lỗi'"),
@@ -108,7 +123,57 @@ const schemas: Record<string, z.ZodTypeAny> = {
   vibeguide_export_report: z.object({
     repoPath: repoPathSchema,
     format: z.enum(["markdown", "json", "text"]).optional().describe("Output format: markdown, json, or text. Defaults to config outputFormat."),
-    saveToFile: z.boolean().optional().describe("Save report to file in repo directory. Default false."),
+    saveToFile: z.boolean().optional().default(false).describe("Save report to file in repo directory. Default false."),
+  }),
+  vibeguide_type_check: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_test_coverage: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_circular_deps: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_dead_code: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_complexity: z.object({
+    repoPath: repoPathSchema,
+    thresholdLoc: z.number().optional().default(300).describe("Lines of code threshold. Default 300."),
+    thresholdComplexity: z.number().optional().default(15).describe("Cyclomatic complexity threshold. Default 15."),
+  }),
+  vibeguide_a11y_check: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_secret_scan: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_i18n_gap: z.object({
+    repoPath: repoPathSchema,
+    baseLocale: z.string().optional().default("en").describe("Base locale to compare against, e.g. 'en'. Default 'en'."),
+  }),
+  vibeguide_doc_gap: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_perf_budget: z.object({
+    repoPath: repoPathSchema,
+    budgetKb: z.number().optional().default(500).describe("Bundle size budget in KB. Default 500."),
+  }),
+  vibeguide_monorepo_route: z.object({
+    repoPath: repoPathSchema,
+    changedFiles: z.array(z.string()).optional().describe("List of changed files to scope monorepo impact."),
+  }),
+  vibeguide_review_pr: z.object({
+    repoPath: repoPathSchema,
+    filePath: z.string().optional().describe("Path to a file being changed (for impact analysis)."),
+    feature: z.string().optional().describe("Feature name (for test plan generation)."),
+  }),
+  vibeguide_founder_brief: z.object({
+    repoPath: repoPathSchema,
+    days: z.number().optional().default(7).describe("Number of days to look back. Default 7."),
+  }),
+  vibeguide_meeting_notes: z.object({
+    repoPath: repoPathSchema,
   }),
 };
 
@@ -133,6 +198,20 @@ const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   vibeguide_smart_route: handleSmartRoute as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_session_status: handleSessionStatus as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_export_report: handleExportReport as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_type_check: handleTypeCheck as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_test_coverage: handleTestCoverage as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_circular_deps: handleCircularDeps as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_dead_code: handleDeadCode as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_complexity: handleComplexity as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_a11y_check: handleA11yCheck as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_secret_scan: handleSecretScanV2 as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_i18n_gap: handleI18nGap as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_doc_gap: handleDocGap as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_perf_budget: handlePerfBudget as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_monorepo_route: handleMonorepoRoute as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_review_pr: handleReviewPr as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_founder_brief: handleFounderBrief as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_meeting_notes: handleMeetingNotes as unknown as (args: unknown) => Promise<unknown>,
 };
 
 export function registerTools(): { name: string; description: string; inputSchema: unknown }[] {
@@ -228,25 +307,39 @@ function compressOutput(result: unknown, maxChars: number): string {
 
 function getToolDescription(name: string): string {
   const descriptions: Record<string, string> = {
-    vibeguide_impact: "Analyze impact of changing a file: affected files, risk level, UI components.",
-    vibeguide_trace_journey: "Trace user journey through codebase: entry points, files involved.",
-    vibeguide_heuristic_bug: "Find bug patterns in repo based on symptom description.",
-    vibeguide_regression: "Check regression after file changes: affected flows and test coverage.",
-    vibeguide_scan_repo: "Scan repository structure and dependencies.",
-    vibeguide_test_plan: "Generate test plan for a feature based on code structure.",
-    vibeguide_bug_report: "Format bug report from user description with severity assessment.",
-    vibeguide_impact_confirm: "Confirm impact before changes: affected features and estimated downtime.",
-    vibeguide_what_changed: "Show recent changes: commits, files, affected features.",
-    vibeguide_get_file: "Read file content safely (with path traversal guard).",
-    vibeguide_get_deps: "Get dependency graph of the repository.",
-    vibeguide_snapshot: "Create, list, or restore repo snapshots before/after changes.",
-    vibeguide_diff_summary: "Summarize code changes in Vietnamese for non-tech users.",
-    vibeguide_deploy_check: "Pre-deploy validation: bugs, uncommitted changes, orphans.",
-    vibeguide_suggest_fix: "Suggest concrete code fixes for bug patterns found in files.",
-    vibeguide_changelog: "Generate Vietnamese changelog from git history.",
-    vibeguide_dependency_graph: "Export dependency graph as Mermaid markdown or JSON.",
-    vibeguide_smart_route: "Smart routing: detect situation and recommend plugins/tools.",
-    vibeguide_export_report: "Export session timeline as Markdown, JSON, or text report.",
+    vibeguide_impact: "Analyze impact of changing a file — Phân tích ảnh hưởng khi thay đổi file: affected files, risk level, UI components.",
+    vibeguide_trace_journey: "Trace user journey — Theo dõi hành trình người dùng: entry points, files involved.",
+    vibeguide_heuristic_bug: "Find bug patterns — Tìm lỗi theo mô tả triệu chứng.",
+    vibeguide_regression: "Check regression — Kiểm tra hồi quy sau thay đổi: affected flows, test coverage.",
+    vibeguide_scan_repo: "Scan repository — Quét cấu trúc và dependency của repo.",
+    vibeguide_test_plan: "Generate test plan — Tạo kịch bản kiểm thử cho tính năng.",
+    vibeguide_bug_report: "Format bug report — Định dạng báo cáo lỗi với mức độ nghiêm trọng.",
+    vibeguide_impact_confirm: "Confirm impact — Xác nhận ảnh hưởng trước khi sửa: features, downtime.",
+    vibeguide_what_changed: "Show recent changes — Hiển thị thay đổi gần đây: commits, files, features.",
+    vibeguide_get_file: "Read file — Đọc nội dung file an toàn (chống path traversal).",
+    vibeguide_get_deps: "Get dependency graph — Lấy đồ thị phụ thuộc của repo.",
+    vibeguide_snapshot: "Snapshot — Chụp, liệt kê, hoặc khôi phục snapshot trước/sau thay đổi.",
+    vibeguide_diff_summary: "Diff summary — Tóm tắt thay đổi code bằng tiếng Việt cho non-tech.",
+    vibeguide_deploy_check: "Deploy check — Kiểm tra trước deploy: bug, uncommitted, orphan files.",
+    vibeguide_suggest_fix: "Suggest fix — Gợi ý sửa code cụ thể cho bug patterns.",
+    vibeguide_changelog: "Changelog — Tạo changelog tiếng Việt từ lịch sử git.",
+    vibeguide_dependency_graph: "Dependency graph — Xuất đồ thị phụ thuộc dạng Mermaid hoặc JSON.",
+    vibeguide_smart_route: "Smart route — Định tuyến thông minh: phát hiện tình huống, gợi ý plugin/tool.",
+    vibeguide_export_report: "Export report — Xuất timeline session dạng Markdown, JSON, hoặc text.",
+    vibeguide_type_check: "Type check — Chạy kiểm tra TypeScript và báo lỗi bằng tiếng Việt.",
+    vibeguide_test_coverage: "Test coverage — Đọc báo cáo độ phủ test và liệt kê file yếu.",
+    vibeguide_circular_deps: "Circular deps — Tìm vòng lặp import trong đồ thị phụ thuộc.",
+    vibeguide_dead_code: "Dead code — Tìm export không dùng và file orphan.",
+    vibeguide_complexity: "Complexity — Phân tích độ phức tạp code (LOC + cyclomatic).",
+    vibeguide_a11y_check: "Accessibility — Quét lỗi tiếp cận cơ bản: alt, aria-label, href, label.",
+    vibeguide_secret_scan: "Secret scan — Quét secret, API key, credential trong source.",
+    vibeguide_i18n_gap: "i18n gap — Tìm key dịch thiếu/thừa giữa các locale.",
+    vibeguide_doc_gap: "Doc gap — Tìm file thiếu README và export thiếu JSDoc.",
+    vibeguide_perf_budget: "Perf budget — Kiểm tra kích thước bundle so với ngân sách performance.",
+    vibeguide_monorepo_route: "Monorepo — Phát hiện monorepo manager và liệt kê package bị ảnh hưởng.",
+    vibeguide_review_pr: "Review PR — Kiểm tra pre-merge: type, bug, secret, circular deps, impact.",
+    vibeguide_founder_brief: "Founder brief — Tạo báo cáo tuần thân thiện cho founder.",
+    vibeguide_meeting_notes: "Meeting notes — Tạo biên bản họp từ session context (done, in-progress, blockers).",
   };
   return descriptions[name] || "";
 }
