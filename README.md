@@ -184,7 +184,11 @@ node test-batch2.cjs
 Bộ test hiện kiểm tra:
 
 - MCP server expose đủ 34 tools.
+- `test-mcp.cjs` hiện có 60 assertion cho tool list, schema, analyzer và smart routing.
 - Zod schema chuyển sang JSON Schema đúng enum/default/literal/nested object.
+- Tool registry được tách khỏi schema/description/output compression để giảm complexity.
+- `vibeguide_dead_code` tránh false-positive từ comment, type-only usage và text trong re-export.
+- `vibeguide_complexity` dùng max function complexity, bỏ qua file type-only/static data dài.
 - Snapshot restore khôi phục file bị sửa và xóa file mới tạo sau snapshot.
 - Diff summary, deploy check, changelog, dependency graph và suggest fix.
 - TypeScript check chạy qua compiler local khi có `node_modules/typescript`.
@@ -205,7 +209,21 @@ Kết quả mong muốn trước khi commit:
 
 - `vibeguide_type_check` pass.
 - `vibeguide_review_pr` không có blocker.
+- `vibeguide_dead_code` không báo export chết ngoài các API public có chủ đích.
+- `vibeguide_complexity` tập trung vào logic phức tạp, không flag dữ liệu tĩnh hoặc type-only file.
 - `vibeguide_deploy_check` chỉ được warning nếu còn uncommitted changes.
+
+## Kiến trúc nội bộ
+
+VibeGuide giữ MCP surface ổn định ở `src/mcp/tools.ts`, nhưng tách phần phụ trợ thành module nhỏ:
+
+- `src/mcp/toolSchemas.ts` — Zod schemas cho 34 tools.
+- `src/mcp/toolDescriptions.ts` — mô tả song ngữ cho tool list.
+- `src/mcp/toolOutput.ts` — nén output để giữ context budget.
+- `src/mcp/zodJsonSchema.ts` — chuyển Zod schema sang JSON Schema cho MCP.
+- `src/utils/codeText.ts` — strip comment/string/regex trước khi analyzer đọc code.
+
+Mục tiêu là để `tools.ts` chỉ làm orchestration: register tools, validate input, gọi handler, log session và trả output.
 
 ## Workflow thực tế
 
@@ -255,6 +273,7 @@ jobs:
 - TypeScript + ESM.
 - MCP SDK `@modelcontextprotocol/sdk`.
 - Zod schema cho tool input.
+- MCP registry tách schema, description, output compression và Zod JSON Schema conversion.
 - JSON cache/session/snapshot, không cần database.
 - SHA-256 checksum cho snapshot.
 - Dogfooding bằng chính MCP tools của VibeGuide.

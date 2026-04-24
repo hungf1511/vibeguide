@@ -36,45 +36,8 @@ export function getIfFresh(repo: string, signature: string): Record<string, unkn
   }
 }
 
-export function get(repo: string): Record<string, unknown> | null {
-  ensureDir();
-  const key = cacheKey(repo);
-  if (!fs.existsSync(key)) return null;
-  try {
-    const raw = JSON.parse(fs.readFileSync(key, "utf-8"));
-    if (raw && typeof raw === "object" && "signature" in raw && "data" in raw) {
-      return (raw as CacheEnvelope<Record<string, unknown>>).data;
-    }
-    return raw as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
 export function set(repo: string, data: Record<string, unknown>, signature?: string): void {
   ensureDir();
   const payload: CacheEnvelope<Record<string, unknown>> = { signature: signature ?? "", data };
   fs.writeFileSync(cacheKey(repo), JSON.stringify(payload, null, 2), "utf-8");
-}
-
-export function getFileHashes(repo: string): Record<string, string> | null {
-  const key = cacheKey(repo) + ".hashes";
-  if (!fs.existsSync(key)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(key, "utf-8")) as Record<string, string>;
-  } catch {
-    return null;
-  }
-}
-
-export function setFileHashes(repo: string, hashes: Record<string, string>): void {
-  ensureDir();
-  fs.writeFileSync(cacheKey(repo) + ".hashes", JSON.stringify(hashes, null, 2), "utf-8");
-}
-
-export function invalidate(repo: string): void {
-  const key = cacheKey(repo);
-  if (fs.existsSync(key)) {
-    fs.unlinkSync(key);
-  }
 }

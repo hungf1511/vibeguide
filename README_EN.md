@@ -184,7 +184,11 @@ node test-batch2.cjs
 The test suite verifies:
 
 - The MCP server exposes all 34 tools.
+- `test-mcp.cjs` now has 60 assertions for tool listing, schema conversion, analyzers, and smart routing.
 - Zod schemas are converted to JSON Schema with enum/default/literal/nested object support.
+- The tool registry is split from schema, description, and output-compression helpers to reduce complexity.
+- `vibeguide_dead_code` avoids false positives from comments, type-only usage, and re-export text.
+- `vibeguide_complexity` uses max function complexity and ignores long type-only/static-data files.
 - Snapshot restore reverts modified files and deletes files created after the snapshot.
 - Diff summary, deploy check, changelog, dependency graph, and suggest fix behavior.
 - TypeScript checks use the local compiler when `node_modules/typescript` is available.
@@ -205,7 +209,21 @@ Expected result before commit:
 
 - `vibeguide_type_check` passes.
 - `vibeguide_review_pr` has no blockers.
+- `vibeguide_dead_code` reports no accidental dead exports outside intentional public APIs.
+- `vibeguide_complexity` focuses on complex logic instead of static data or type-only files.
 - `vibeguide_deploy_check` only warns when there are uncommitted changes.
+
+## Internal Architecture
+
+VibeGuide keeps the MCP surface stable in `src/mcp/tools.ts`, while support concerns live in smaller modules:
+
+- `src/mcp/toolSchemas.ts` — Zod schemas for all 34 tools.
+- `src/mcp/toolDescriptions.ts` — bilingual tool-list descriptions.
+- `src/mcp/toolOutput.ts` — output compression for context budget control.
+- `src/mcp/zodJsonSchema.ts` — Zod-to-JSON-Schema conversion for MCP.
+- `src/utils/codeText.ts` — strips comments, strings, and regex literals before analyzers read source text.
+
+The goal is for `tools.ts` to only orchestrate: register tools, validate input, call handlers, log sessions, and return output.
 
 ## Real Workflow
 
@@ -255,6 +273,7 @@ jobs:
 - TypeScript + ESM.
 - MCP SDK `@modelcontextprotocol/sdk`.
 - Zod schemas for tool input.
+- MCP registry split into schema, description, output-compression, and Zod JSON Schema conversion modules.
 - JSON cache/session/snapshot files, no database required.
 - SHA-256 checksums for snapshots.
 - Dogfooding with VibeGuide's own MCP tools.

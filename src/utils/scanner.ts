@@ -1,7 +1,6 @@
 /** Repo scanner — liệt kê file, dependency graph, git status, path normalization. */
 import * as fs from "fs";
 import * as path from "path";
-import * as crypto from "crypto";
 import { execFileSync } from "child_process";
 import type { TreeNode, DepGraph, DepEdge } from "../types.js";
 import { loadConfig, shouldIgnore } from "./configLoader.js";
@@ -213,36 +212,6 @@ function resolveAliasImport(imported: string, aliases: PathAlias[], baseDir: str
     return resolveImport("", targetPath.replace(/\\/g, "/"), baseDir);
   }
   return null;
-}
-
-/** Compute SHA-256 hash of a file */
-export function getFileHash(filePath: string): string {
-  try {
-    const content = fs.readFileSync(filePath);
-    return crypto.createHash("sha256").update(content).digest("hex").slice(0, 16);
-  } catch {
-    return "";
-  }
-}
-
-/** Incremental scan: only re-scan files whose hash changed */
-export function scanDependenciesIncremental(
-  dir: string,
-  previousHashes: Record<string, string> = {}
-): { graph: DepGraph; hashes: Record<string, string>; changedFiles: string[] } {
-  const graph = scanDependencies(dir);
-  const hashes: Record<string, string> = {};
-  const changedFiles: string[] = [];
-
-  for (const node of graph.nodes) {
-    const hash = getFileHash(path.join(dir, node));
-    hashes[node] = hash;
-    if (previousHashes[node] !== hash) {
-      changedFiles.push(node);
-    }
-  }
-
-  return { graph, hashes, changedFiles };
 }
 
 export function getFileContent(filePath: string, repoPath: string): string | null {

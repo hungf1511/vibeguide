@@ -204,13 +204,50 @@ async function runTests() {
   assert(Array.isArray(sec.findings), 'Có findings array');
   assert(typeof sec.scannedFiles === 'number', 'Có scannedFiles number');
 
-  // ─── TEST 17: Smart route — type error keyword ──────────────
-  console.log('\n--- TEST 17: vibeguide_smart_route (type error) ---');
+  // ─── TEST 17: Dead code false-positive guard ───────────────
+  console.log('\n--- TEST 17: vibeguide_dead_code ---');
   const r16 = await client.callTool({
+    name: 'vibeguide_dead_code',
+    arguments: { repoPath: '.' }
+  });
+  const dead = JSON.parse(r16.content[0].text);
+  const deadSymbols = dead.unusedExports.map(e => `${e.file}:${e.symbol}`);
+  assert(Array.isArray(dead.unusedExports), 'Dead code có unusedExports array');
+  assert(!deadSymbols.includes('src/utils/scanner.ts:importRegex'), 'Dead code không nhặt symbol từ comment/re-export text');
+  assert(!deadSymbols.includes('src/types.ts:AffectedFile'), 'Dead code nhận biết type usage nội bộ trong types.ts');
+
+  // ─── TEST 18: Complexity false-positive guard ──────────────
+  console.log('\n--- TEST 18: vibeguide_complexity ---');
+  const r17 = await client.callTool({
+    name: 'vibeguide_complexity',
+    arguments: { repoPath: '.', thresholdLoc: 250, thresholdComplexity: 12 }
+  });
+  const complexity = JSON.parse(r17.content[0].text);
+  const heuristicsMetric = complexity.files.find(f => f.file === 'src/utils/heuristics.ts');
+  const repoMetric = complexity.files.find(f => f.file === 'src/mcp/handlers/repo.ts');
+  const pluginKeywordsMetric = complexity.files.find(f => f.file === 'src/utils/pluginKeywords.ts');
+  const typesMetric = complexity.files.find(f => f.file === 'src/types.ts');
+  const complexityMetric = complexity.files.find(f => f.file === 'src/utils/complexity.ts');
+  const toolsMetric = complexity.files.find(f => f.file === 'src/mcp/tools.ts');
+  const toolSchemasMetric = complexity.files.find(f => f.file === 'src/mcp/toolSchemas.ts');
+  const zodJsonSchemaMetric = complexity.files.find(f => f.file === 'src/mcp/zodJsonSchema.ts');
+  assert(Array.isArray(complexity.files), 'Complexity có files array');
+  assert(heuristicsMetric && heuristicsMetric.cyclomatic <= 12, 'Complexity bỏ qua regex definitions trong heuristics.ts');
+  assert(repoMetric && repoMetric.cyclomatic < 40, 'Complexity dùng max function thay vì cộng cả file');
+  assert(pluginKeywordsMetric && pluginKeywordsMetric.flagged === false, 'Complexity không flag file dữ liệu tĩnh dài');
+  assert(typesMetric && typesMetric.flagged === false, 'Complexity không flag file type-only dài');
+  assert(complexityMetric && complexityMetric.flagged === false, 'Complexity tự tách helper để không tự flag chính nó');
+  assert(toolsMetric && toolsMetric.flagged === false, 'Tool registry không còn vượt ngưỡng complexity');
+  assert(toolSchemasMetric && toolSchemasMetric.flagged === false, 'Tool schema registry được tách thành dữ liệu ít rủi ro');
+  assert(zodJsonSchemaMetric && zodJsonSchemaMetric.flagged === false, 'Zod schema converter được tách nhỏ dưới ngưỡng complexity');
+
+  // ─── TEST 19: Smart route — type error keyword ──────────────
+  console.log('\n--- TEST 19: vibeguide_smart_route (type error) ---');
+  const r18 = await client.callTool({
     name: 'vibeguide_smart_route',
     arguments: { situation: 'lỗi kiểu TypeScript', repoPath: '.' }
   });
-  const smart2 = JSON.parse(r16.content[0].text);
+  const smart2 = JSON.parse(r18.content[0].text);
   assert(smart2.vibeGuideTools.some(t => t.name === 'vibeguide_type_check'), 'Smart route gợi ý type_check cho lỗi kiểu');
 
   await client.close();

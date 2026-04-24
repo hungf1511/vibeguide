@@ -16,7 +16,7 @@ function sessionKey(repo: string): string {
   return path.join(SESSION_DIR, `${safe}.json`);
 }
 
-export interface SessionEvent {
+interface SessionEvent {
   timestamp: string;
   tool: string;
   input: Record<string, unknown>;
@@ -57,7 +57,7 @@ export function getSession(repo: string): SessionContext {
   };
 }
 
-export function setSession(repo: string, ctx: SessionContext): void {
+function setSession(repo: string, ctx: SessionContext): void {
   ensureDir();
   fs.writeFileSync(sessionKey(repo), JSON.stringify(ctx, null, 2), "utf-8");
 }
@@ -75,14 +75,6 @@ export function logEvent(repo: string, event: SessionEvent): void {
     const snap = event.output as { snapshotId?: string };
     if (snap?.snapshotId) ctx.snapshotId = snap.snapshotId;
   }
-  setSession(repo, ctx);
-}
-
-export function recordDecision(repo: string, type: "approve" | "reject" | "rollback", note: string): void {
-  const ctx = getSession(repo);
-  ctx.founderDecisions.push({ type, note, timestamp: new Date().toISOString() });
-  if (type === "rollback") ctx.status = "rolled_back";
-  if (type === "approve") ctx.status = "approved";
   setSession(repo, ctx);
 }
 

@@ -1,7 +1,5 @@
 import * as path from "path";
 
-const CACHE_DIR = path.resolve(process.cwd(), "cache");
-
 export function resolveSafe(targetPath: string, repoPath?: string): string {
   const base = repoPath ? path.resolve(repoPath) : process.cwd();
   const resolved = path.resolve(base, targetPath);
@@ -30,9 +28,4 @@ export function resolveRepo(repoPath?: string): string {
   }
 
   return repo;
-}
-
-export function isCachePath(p: string): boolean {
-  const resolved = path.resolve(p);
-  return resolved.startsWith(CACHE_DIR);
 }
