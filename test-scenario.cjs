@@ -22,7 +22,7 @@ async function runScenario() {
   const client = new Client({ name: 'scenario-test', version: '1.0.0' });
   await client.connect(transport);
 
-  const repo = 'C:/Users/User/vibeguide-test-project';
+  const repo = './test-project';
 
   // Step 1: Scan repo để biết cấu trúc
   console.log(`${CYAN}[Dev]${RESET} Đầu tiên, quét repo để biết có file gì...`);

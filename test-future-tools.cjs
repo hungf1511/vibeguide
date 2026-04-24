@@ -35,7 +35,7 @@ async function runTests() {
   const client = new Client({ name: 'future-test', version: '1.0.0' });
   await client.connect(transport);
 
-  const repo = 'C:/Users/User/vibeguide-test-project';
+  const repo = './test-project';
 
   // --- TEST 1: snapshot create ---
   console.log(`${CYAN}--- TEST 1: vibeguide_snapshot create ---${RESET}`);
