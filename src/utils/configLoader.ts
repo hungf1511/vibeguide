@@ -37,7 +37,7 @@ export interface VibeguideConfig {
 
 const DEFAULT_CONFIG: VibeguideConfig = {
   framework: "auto",
-  ignorePatterns: [],
+  ignorePatterns: ["*.config.ts", "*.config.js", "*.bench.ts", "coverage", "coverage/**", "dist", "dist/**", "cache", "cache/**"],
   entryPoints: {
     nextjs: ["page.tsx", "page.ts", "page.jsx", "page.js", "layout.tsx", "layout.ts", "layout.jsx", "layout.js", "route.ts", "route.tsx"],
     remix: ["route.tsx", "route.ts", "route.jsx", "route.js"],

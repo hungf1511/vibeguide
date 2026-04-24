@@ -1,0 +1,1 @@
+export function useHook3() { return 3; }

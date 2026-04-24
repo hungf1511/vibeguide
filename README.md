@@ -4,7 +4,15 @@
 
 VibeGuide là MCP server giúp AI coding assistant như Codex hoặc Claude Code hiểu codebase trước khi sửa. Thay vì đoán mò, AI có thể quét repo, tìm bug pattern, phân tích ảnh hưởng, tạo snapshot, kiểm tra trước deploy và viết báo cáo dễ hiểu cho người không chuyên kỹ thuật.
 
-Dự án hiện có 34 MCP tools, viết bằng TypeScript, chạy local, không cần database.
+Dự án hiện có 34 MCP tools, viết bằng TypeScript, chạy local, không cần database. VibeGuide được dogfood bằng chính MCP tools của nó trước khi commit.
+
+## Trạng thái hiện tại
+
+- Branch phát triển chính: `v2-dev`.
+- Runtime khuyến nghị: Node.js 20+.
+- Quality gate: `npm run build`, `npm test`, `npm run test:coverage`, `npm run bench`, `npm run check`.
+- CI chạy trên `main` và `v2-dev`.
+- Artifact sinh ra như `coverage/`, `dist/`, `cache/` và plan riêng tư trong `docs/plans/` không nên commit.
 
 ## Vấn đề VibeGuide giải quyết
 
@@ -141,8 +149,16 @@ Ví dụ:
   "ignorePatterns": [
     "*.test.ts",
     "*.spec.ts",
+    "*.bench.ts",
+    "*.config.ts",
     "__tests__/**",
     "*.d.ts",
+    "coverage",
+    "coverage/**",
+    "docs/plans",
+    "docs/plans/**",
+    "tests/fixtures/**",
+    "tests/benchmarks/**",
     "test-project/**",
     "test-*.cjs",
     "scripts/**"
@@ -165,26 +181,49 @@ Ví dụ:
 
 Các trường quan trọng:
 
-- `ignorePatterns` giúp loại test fixture, script hoặc file sinh ra khỏi scan.
+- `ignorePatterns` giúp loại test fixture, script, artifact sinh ra hoặc plan riêng tư khỏi scan.
 - `thresholds` điều chỉnh mức cảnh báo cho bug pattern, orphan file và context budget.
 - `security` bật/tắt các kiểm tra bảo mật.
 - `framework` để `auto` nếu muốn VibeGuide tự nhận diện project.
+
+## Scope cho repo lớn
+
+Một số tool nhận `scope` để giảm token và thời gian chạy trên repo lớn:
+
+```json
+{
+  "scope": {
+    "paths": ["src/mcp", "src/core/git"],
+    "since": "main",
+    "until": "HEAD"
+  }
+}
+```
+
+Áp dụng cho:
+
+- `vibeguide_scan_repo`
+- `vibeguide_get_deps`
+- `vibeguide_dependency_graph`
+- `vibeguide_impact`
+
+Nếu dùng `scope`, VibeGuide chỉ scan phần liên quan thay vì đọc toàn bộ repo. Đây là workflow khuyến nghị khi dùng AI agent trên project lớn.
 
 ## Kiểm thử
 
 ```bash
 npm run build
+npm test
+npm run test:coverage
+npm run bench
 npm run check
-node test-mcp.cjs
-node test-scenario.cjs
-node test-future-tools.cjs
-node test-batch2.cjs
 ```
 
 Bộ test hiện kiểm tra:
 
-- MCP server expose đủ 34 tools.
-- `test-mcp.cjs` hiện có 60 assertion cho tool list, schema, analyzer và smart routing.
+- MCP registry expose đủ tool theo schema hiện tại, không hard-code số lượng.
+- Git-native scanner/log/status/cache, bao gồm scope theo path và loại artifact `coverage/`.
+- Coverage gate P0: lines/statements/functions >= 70%, branches >= 60%.
 - Zod schema chuyển sang JSON Schema đúng enum/default/literal/nested object.
 - Tool registry được tách khỏi schema/description/output compression để giảm complexity.
 - `vibeguide_dead_code` tránh false-positive từ comment, type-only usage và text trong re-export.
@@ -201,6 +240,7 @@ VibeGuide được dùng để kiểm tra chính VibeGuide. Một vòng self-tes
 vibeguide_scan_repo
 vibeguide_type_check
 vibeguide_diff_summary
+vibeguide_dead_code
 vibeguide_review_pr
 vibeguide_deploy_check
 ```
@@ -263,9 +303,10 @@ jobs:
         with: { node-version: '20' }
       - run: npm ci
       - run: npm run build
+      - run: npm test
+      - run: npm run test:coverage
+      - run: npm run bench
       - run: npm run check
-      - run: node test-mcp.cjs
-      - run: node test-future-tools.cjs
 ```
 
 ## Tech Stack
@@ -276,6 +317,7 @@ jobs:
 - MCP registry tách schema, description, output compression và Zod JSON Schema conversion.
 - JSON cache/session/snapshot, không cần database.
 - SHA-256 checksum cho snapshot.
+- Git-native scanner/log/status/cache cho Phase 1.
 - Dogfooding bằng chính MCP tools của VibeGuide.
 
 ## License

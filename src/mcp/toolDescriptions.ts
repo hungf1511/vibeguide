@@ -34,6 +34,8 @@ const descriptions: Record<string, string> = {
   vibeguide_review_pr: "Review PR — Kiểm tra pre-merge: type, bug, secret, circular deps, impact.",
   vibeguide_founder_brief: "Founder brief — Tạo báo cáo tuần thân thiện cho founder.",
   vibeguide_meeting_notes: "Meeting notes — Tạo biên bản họp từ session context (done, in-progress, blockers).",
+  vibeguide_git_status: "Git status — Trạng thái git: branch, SHA, sạch/dirty, số file chưa commit.",
+  vibeguide_git_log: "Git log — Lịch sử commit có cấu trúc: SHA, author, date, message, files changed.",
 };
 
 export function getToolDescription(name: string): string {

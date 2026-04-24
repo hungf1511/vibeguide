@@ -32,16 +32,28 @@ export {
 export {
   handleTypeCheck,
   handleTestCoverage,
-  handleCircularDeps,
-  handleDeadCode,
   handleComplexity,
   handleA11yCheck,
-  handleSecretScanV2,
-  handleI18nGap,
   handleDocGap,
   handlePerfBudget,
+} from "./quality.js";
+export {
+  handleCircularDeps,
+  handleDeadCode,
+  handleSecretScanV2,
+  handleI18nGap,
+} from "./analysis.js";
+export {
   handleMonorepoRoute,
+} from "./monorepo.js";
+export {
   handleReviewPr,
+} from "./review.js";
+export {
   handleFounderBrief,
   handleMeetingNotes,
-} from "./newHandlers.js";
+} from "./briefing.js";
+export {
+  handleGitStatus,
+  handleGitLog,
+} from "./git.js";

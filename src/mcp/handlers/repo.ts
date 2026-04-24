@@ -6,12 +6,13 @@ import { scanDirectory, getFileContent, getGitStatus, getRecentCommits } from ".
 import { generateChangelog } from "../../utils/changelog.js";
 import { createSnapshot, listSnapshots, restoreSnapshot, getSnapshot } from "../../utils/snapshot.js";
 import { getCachedDeps } from "./impact.js";
+import type { FileScope } from "../../core/git/index.js";
 
-export async function handleScanRepo(args: { repoPath?: string }): Promise<{ summary: string; fileTypes: Record<string, number>; topLevelFolders: string[]; edges: DepGraph["edges"]; stats: { totalFiles: number; totalFolders: number }; git: { branch: string; modified: number; ahead: number }; files: string[] }> {
+export async function handleScanRepo(args: { repoPath?: string; scope?: FileScope }): Promise<{ summary: string; fileTypes: Record<string, number>; topLevelFolders: string[]; edges: DepGraph["edges"]; stats: { totalFiles: number; totalFolders: number }; git: { branch: string; modified: number; ahead: number }; files: string[] }> {
   const repo = resolveRepo(args.repoPath);
   const structure = scanDirectory(repo);
   const stats = countTree(structure);
-  const deps = getCachedDeps(repo);
+  const deps = getCachedDeps(repo, args.scope);
   const allFiles: string[] = [];
   const fileTypes: Record<string, number> = {};
   function walkTree(nodes: TreeNode[]) {
@@ -28,14 +29,16 @@ export async function handleScanRepo(args: { repoPath?: string }): Promise<{ sum
   walkTree(structure);
   const topLevelFolders = structure.filter((n) => n.type === "folder").map((n) => n.name);
   const gitStatus = getGitStatus(repo);
+  const files = args.scope ? deps.nodes : allFiles;
+  const summaryPrefix = args.scope ? `Scope co ${deps.nodes.length} source file` : `Repo co ${stats.files} file, ${stats.folders} folder`;
   return {
-    summary: `Repo co ${stats.files} file, ${stats.folders} folder. Branch: ${gitStatus.branch}. Nhieu nhat: ${Object.entries(fileTypes).sort((a, b) => b[1] - a[1])[0]?.join(" ") || "N/A"}.`,
+    summary: `${summaryPrefix}. Branch: ${gitStatus.branch}. Nhieu nhat: ${Object.entries(fileTypes).sort((a, b) => b[1] - a[1])[0]?.join(" ") || "N/A"}.`,
     fileTypes,
     topLevelFolders,
     edges: deps.edges.slice(0, 50),
-    stats: { totalFiles: stats.files, totalFolders: stats.folders },
+    stats: { totalFiles: args.scope ? deps.nodes.length : stats.files, totalFolders: stats.folders },
     git: { branch: gitStatus.branch, modified: gitStatus.modified.length, ahead: gitStatus.ahead },
-    files: allFiles.slice(0, 100),
+    files: files.slice(0, 100),
   };
 }
 
@@ -73,8 +76,8 @@ export async function handleGetFile(args: { filePath: string; repoPath?: string 
   return { content: content.length > 50000 ? content.slice(0, 50000) : content, truncated: content.length > 50000 };
 }
 
-export async function handleGetDeps(args: { repoPath?: string }): Promise<DepGraph> {
-  return getCachedDeps(resolveRepo(args.repoPath));
+export async function handleGetDeps(args: { repoPath?: string; scope?: FileScope }): Promise<DepGraph> {
+  return getCachedDeps(resolveRepo(args.repoPath), args.scope);
 }
 
 export async function handleWhatChanged(args: { repoPath?: string }): Promise<ChangeLog> {
@@ -91,9 +94,9 @@ export async function handleChangelog(args: { repoPath?: string; count?: number 
   return generateChangelog(repo, args.count ?? 20);
 }
 
-export async function handleDepGraph(args: { repoPath?: string; format?: string }): Promise<DependencyGraphResult> {
+export async function handleDepGraph(args: { repoPath?: string; format?: string; scope?: FileScope }): Promise<DependencyGraphResult> {
   const repo = resolveRepo(args.repoPath);
-  const deps = getCachedDeps(repo);
+  const deps = getCachedDeps(repo, args.scope);
   const fmt = args.format || "mermaid";
   if (fmt === "json") {
     return { mermaid: JSON.stringify({ nodes: deps.nodes, edges: deps.edges }, null, 2), nodes: deps.nodes.length, edges: deps.edges.length };

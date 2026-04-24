@@ -1,0 +1,6 @@
+{
+  "name": "@fixture/web",
+  "dependencies": {
+    "@fixture/lib": "workspace:*"
+  }
+}
