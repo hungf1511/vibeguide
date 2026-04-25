@@ -4,6 +4,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { PLUGIN_KEYWORDS } from "./pluginKeywords.js";
 import { scoreSituation, matchKeywords } from "./scoreSituation.js";
+import { NATIVE_TOOL_NAMES } from "./nativeTools.js";
 
 export interface DiscoveredPlugin {
   name: string;
@@ -89,39 +90,7 @@ export function recommendPluginsForSituation(
   const toolResults: Array<{ name: string; confidence: number; reason: string }> = [];
 
   // --- Phase 1: Match VibeGuide native tools ---
-  const nativeToolNames = [
-    "vibeguide_heuristic_bug",
-    "vibeguide_trace_journey",
-    "vibeguide_impact",
-    "vibeguide_test_plan",
-    "vibeguide_snapshot",
-    "vibeguide_deploy_check",
-    "vibeguide_suggest_fix",
-    "vibeguide_changelog",
-    "vibeguide_dependency_graph",
-    "vibeguide_diff_summary",
-    "vibeguide_what_changed",
-    "vibeguide_regression",
-    "vibeguide_scan_repo",
-    "vibeguide_get_file",
-    "vibeguide_get_deps",
-    "vibeguide_type_check",
-    "vibeguide_test_coverage",
-    "vibeguide_circular_deps",
-    "vibeguide_dead_code",
-    "vibeguide_complexity",
-    "vibeguide_a11y_check",
-    "vibeguide_secret_scan",
-    "vibeguide_i18n_gap",
-    "vibeguide_doc_gap",
-    "vibeguide_perf_budget",
-    "vibeguide_monorepo_route",
-    "vibeguide_review_pr",
-    "vibeguide_founder_brief",
-    "vibeguide_meeting_notes",
-  ];
-
-  for (const toolName of nativeToolNames) {
+  for (const toolName of NATIVE_TOOL_NAMES) {
     const kws = PLUGIN_KEYWORDS[toolName] || [];
     const score = scoreSituation(situation, kws);
     if (score > 0.3) {

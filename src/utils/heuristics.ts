@@ -6,6 +6,7 @@ export interface BugPattern {
   severity: "low" | "medium" | "high" | "critical";
 }
 
+/** Known bug symptom patterns for heuristic matching. */
 export const BUG_PATTERNS: BugPattern[] = [
   {
     id: "unhandled-promise",
@@ -112,6 +113,7 @@ export const BUG_PATTERNS: BugPattern[] = [
   },
 ];
 
+/** Match source content against known bug patterns. */
 export function matchPatterns(content: string, filePath: string): { pattern: BugPattern; line: number }[] {
   const matches: { pattern: BugPattern; line: number }[] = [];
   const lines = content.split("\n");

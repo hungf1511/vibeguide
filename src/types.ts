@@ -154,6 +154,18 @@ export interface DependencyGraphResult {
   edges: number;
 }
 
+export interface LanguageSupportResult {
+  analyzers: {
+    language: string;
+    extensions: string[];
+    active: boolean;
+    strategy: string;
+    backend: string;
+  }[];
+  activeLanguages: string[];
+  summary: string;
+}
+
 export interface SmartRouteResult {
   situation: string;
   detectedType: string;
@@ -286,7 +298,7 @@ export interface ReviewPrResult {
   passed: boolean;
   blockers: string[];
   warnings: string[];
-  sections: { name: string; status: "ok" | "warn" | "block"; detail: string }[];
+  sections: { name: string; status: "ok" | "warn" | "block"; detail: string; unavailable?: boolean }[];
   summary: string;
   founderBrief: string;
 }
@@ -295,6 +307,7 @@ export interface FounderBriefResult {
   brief: string;
   highlights: string[];
   nextSteps: string[];
+  status?: string;
 }
 
 export interface MeetingNotesResult {

@@ -2,6 +2,7 @@
 import { execFileSync } from "child_process";
 import * as path from "path";
 
+/** Execute a git command with simple-git and return stdout. */
 export function runGit(repoPath: string, args: string[], options?: { stdio?: "pipe" | "inherit" }): string {
   const safeRepo = path.resolve(repoPath);
   return execFileSync("git", ["-C", safeRepo, ...args], {

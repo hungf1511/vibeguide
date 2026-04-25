@@ -10,3 +10,5 @@ export { getDiff, getDiffStat } from "./diff.js";
 export type { DiffEntry } from "./diff.js";
 export { getBlame } from "./blame.js";
 export type { BlameEntry } from "./blame.js";
+export { getWorkingStatus } from "./status.js";
+export type { WorkingStatus } from "./status.js";

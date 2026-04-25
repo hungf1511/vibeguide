@@ -10,6 +10,7 @@ interface PkgInfo {
   dependencies: string[];
 }
 
+/** Detect monorepo workspaces and route requests. */
 export function analyzeMonorepo(repo: string, changedFiles: string[] = []): MonorepoRouteResult {
   const detected = detectMonorepo(repo);
   if (!detected.isMonorepo) {

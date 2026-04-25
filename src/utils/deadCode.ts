@@ -1,48 +1,82 @@
-﻿/** Tìm export không được import và file orphan (không có import/export). */
+/** Tim export khong duoc import va file orphan (khong co import/export). */
 import type { DeadCodeResult } from "../types.js";
 import { getAllSourceFiles, scanDependencies } from "./scanner.js";
 import { readSafe } from "./readSafe.js";
 import { stripNonCode } from "./codeText.js";
 
-export function findDeadCode(repo: string): DeadCodeResult {
+interface DeadCodeScanState {
+  fileExports: Map<string, string[]>;
+  codeByFile: Map<string, string>;
+}
+
+/** Find unused exports and files with no inbound references. */
+export async function findDeadCode(repo: string): Promise<DeadCodeResult> {
   const allFiles = getAllSourceFiles(repo);
-  const exportRegex = /\bexport\s+(?:declare\s+)?(?:async\s+)?(?:abstract\s+)?(?:function|const|class|interface|type|enum|let|var)\s+([A-Za-z_$][\w$]*)/g;
-  const namedReexportRegex = /\bexport\s+(?:type\s+)?\{([^}]+)\}(?:\s+from\b)?/g;
+  const { fileExports, codeByFile } = collectCodeAndExports(repo, allFiles);
+  const importedNames = collectImportedNames(allFiles, codeByFile);
+  const unused = collectUnusedExports(fileExports, codeByFile, importedNames);
+  const orphans = await (collectOrphanFiles(repo));
+
+  return {
+    unusedExports: unused.slice(0, 30),
+    orphanFiles: orphans.slice(0, 30),
+    summary: unused.length + " export khong duoc import (" + orphans.length + " file orphan).",
+  };
+}
+
+function collectCodeAndExports(repo: string, allFiles: string[]): DeadCodeScanState {
   const fileExports = new Map<string, string[]>();
   const codeByFile = new Map<string, string>();
 
   for (const file of allFiles) {
     const content = readSafe(repo, file);
     if (!content) continue;
+
     const code = stripNonCode(content);
+    const exports = collectExportNames(code);
     codeByFile.set(file, code);
-    const list: string[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = exportRegex.exec(code)) !== null) list.push(m[1]);
-    while ((m = namedReexportRegex.exec(code)) !== null) {
-      for (const part of m[1].split(",")) {
-        const trimmed = getExportedSpecifierName(part);
-        if (trimmed) list.push(trimmed);
-      }
-    }
-    if (list.length > 0) fileExports.set(file, list);
-    exportRegex.lastIndex = 0;
-    namedReexportRegex.lastIndex = 0;
+    if (exports.length > 0) fileExports.set(file, exports);
   }
 
+  return { fileExports, codeByFile };
+}
+
+function collectExportNames(code: string): string[] {
+  const exportRegex = /\bexport\s+(?:declare\s+)?(?:async\s+)?(?:abstract\s+)?(?:function|const|class|interface|type|enum|let|var)\s+([A-Za-z_$][\w$]*)/g;
+  const namedReexportRegex = /\bexport\s+(?:type\s+)?\{([^}]+)\}(?:\s+from\b)?/g;
+  const list: string[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = exportRegex.exec(code)) !== null) list.push(match[1]);
+  while ((match = namedReexportRegex.exec(code)) !== null) {
+    for (const part of match[1].split(",")) {
+      const name = getExportedSpecifierName(part);
+      if (name) list.push(name);
+    }
+  }
+
+  return list;
+}
+
+function collectImportedNames(allFiles: string[], codeByFile: Map<string, string>): Set<string> {
   const importedNames = new Set<string>();
   const importRegex = /\bimport\s+(?:type\s+)?([^;]+?)\s+from\b/g;
+
   for (const file of allFiles) {
     const content = codeByFile.get(file);
     if (!content) continue;
-    let m: RegExpExecArray | null;
-    while ((m = importRegex.exec(content)) !== null) {
-      addImportedNames(importedNames, m[1]);
-    }
+
+    let match: RegExpExecArray | null;
+    while ((match = importRegex.exec(content)) !== null) addImportedNames(importedNames, match[1]);
     importRegex.lastIndex = 0;
   }
 
+  return importedNames;
+}
+
+function collectUnusedExports(fileExports: Map<string, string[]>, codeByFile: Map<string, string>, importedNames: Set<string>): { file: string; symbol: string }[] {
   const unused: { file: string; symbol: string }[] = [];
+
   for (const [file, exports] of fileExports) {
     const code = codeByFile.get(file) || "";
     for (const sym of exports) {
@@ -52,21 +86,20 @@ export function findDeadCode(repo: string): DeadCodeResult {
     }
   }
 
-  const graph = scanDependencies(repo);
+  return unused;
+}
+
+async function collectOrphanFiles(repo: string): Promise<string[]> {
+  const graph = await (scanDependencies(repo));
   const incoming = new Set<string>();
   const outgoing = new Set<string>();
-  for (const e of graph.edges) {
-    incoming.add(e.to);
-    outgoing.add(e.from);
-  }
-  const orphans = graph.nodes.filter((n) => !incoming.has(n) && !outgoing.has(n));
 
-  const summary = unused.length + " export khong duoc import (" + orphans.length + " file orphan).";
-  return {
-    unusedExports: unused.slice(0, 30),
-    orphanFiles: orphans.slice(0, 30),
-    summary,
-  };
+  for (const edge of graph.edges) {
+    incoming.add(edge.to);
+    outgoing.add(edge.from);
+  }
+
+  return graph.nodes.filter((node) => !incoming.has(node) && !outgoing.has(node));
 }
 
 function addImportedNames(importedNames: Set<string>, specifier: string): void {

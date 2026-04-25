@@ -8,3 +8,6 @@ docs/plans/
 .DS_Store
 output-debug.txt
 evolve-keywords.cjs
+.gitnexus
+.claude/
+.vibeguide/

@@ -12,6 +12,10 @@ export interface VibeguideConfig {
     parallel: boolean;
     maxDepth: number;
   };
+  parser: {
+    backend: "static" | "tree-sitter";
+    legacyParser: boolean;
+  };
   thresholds: {
     bugPatterns: { critical: number; high: number; medium: number };
     orphanFiles: number;
@@ -46,6 +50,7 @@ const DEFAULT_CONFIG: VibeguideConfig = {
   },
   aliases: {},
   scan: { incremental: true, parallel: true, maxDepth: 10 },
+  parser: { backend: "tree-sitter", legacyParser: false },
   thresholds: { bugPatterns: { critical: 0, high: 3, medium: 10 }, orphanFiles: 10, contextBudget: 4000 },
   security: { scanDependencies: true, owaspTop10: true, hardcodedSecrets: ["password", "secret", "token", "api_key", "private_key", "access_key"] },
   vulnerability: { checkNpmAudit: true, severity: "moderate" },
@@ -55,6 +60,7 @@ const DEFAULT_CONFIG: VibeguideConfig = {
   severityThresholds: { deployBlock: "critical", needsApproval: "high" },
 };
 
+/** Load vibeguide config from repo root. */
 export function loadConfig(repo: string): VibeguideConfig {
   const configPath = path.join(repo, ".vibeguide.json");
   try {
@@ -73,6 +79,10 @@ function mergeConfig(base: VibeguideConfig, override: Partial<VibeguideConfig>):
     entryPoints: { ...base.entryPoints, ...(override.entryPoints || {}) },
     aliases: { ...base.aliases, ...(override.aliases || {}) },
     scan: { ...base.scan, ...(override.scan || {}) },
+    parser: {
+      backend: override.parser?.backend ?? base.parser.backend,
+      legacyParser: override.parser?.legacyParser ?? base.parser.legacyParser,
+    },
     thresholds: {
       bugPatterns: { ...base.thresholds.bugPatterns, ...(override.thresholds?.bugPatterns || {}) },
       orphanFiles: override.thresholds?.orphanFiles ?? base.thresholds.orphanFiles,
@@ -97,6 +107,7 @@ function mergeConfig(base: VibeguideConfig, override: Partial<VibeguideConfig>):
   };
 }
 
+/** Detect project framework from package.json and files. */
 export function detectFramework(repo: string): string {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(repo, "package.json"), "utf-8"));
@@ -112,6 +123,7 @@ export function detectFramework(repo: string): string {
   return "generic";
 }
 
+/** Return glob patterns for framework entry points. */
 export function getEntryPointPatterns(repo: string, config: VibeguideConfig): RegExp[] {
   const framework = config.framework === "auto" ? detectFramework(repo) : config.framework;
   const patterns = config.entryPoints[framework] || config.entryPoints.generic || [];
@@ -126,6 +138,7 @@ export function getEntryPointPatterns(repo: string, config: VibeguideConfig): Re
   });
 }
 
+/** Check if a file path should be ignored by scanners. */
 export function shouldIgnore(filePath: string, patterns: string[]): boolean {
   const normalized = filePath.replace(/\\/g, "/");
   for (const pattern of patterns) {

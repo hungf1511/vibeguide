@@ -1,10 +1,11 @@
-﻿/** Chạy TypeScript compiler (--noEmit) và parse lỗi ra struct có message tiếng Việt. */
+/** Ch?y TypeScript compiler (--noEmit) v� parse l?i ra struct c� message ti?ng Vi?t. */
 import * as path from "path";
 import * as cp from "child_process";
 import * as fs from "fs";
 import type { TypeCheckResult, TypeError } from "../types.js";
 import { normalizePath } from "./scanner.js";
 
+/** Run TypeScript type checker and return diagnostics. */
 export function runTypeCheck(repo: string): TypeCheckResult {
   const start = Date.now();
   const errors: TypeError[] = [];

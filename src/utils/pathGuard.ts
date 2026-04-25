@@ -1,5 +1,6 @@
 import * as path from "path";
 
+/** Resolve a path safely within repo boundaries. */
 export function resolveSafe(targetPath: string, repoPath?: string): string {
   const base = repoPath ? path.resolve(repoPath) : process.cwd();
   const resolved = path.resolve(base, targetPath);
@@ -20,6 +21,7 @@ export function resolveSafe(targetPath: string, repoPath?: string): string {
   return resolved;
 }
 
+/** Resolve repo path or default to cwd. */
 export function resolveRepo(repoPath?: string): string {
   const repo = repoPath ? path.resolve(repoPath) : process.cwd();
 

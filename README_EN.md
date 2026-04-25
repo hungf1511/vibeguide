@@ -4,15 +4,31 @@
 
 VibeGuide is an MCP server that helps AI coding assistants such as Codex or Claude Code understand a codebase before changing it. Instead of guessing, the assistant can scan the repo, find bug patterns, analyze impact, create snapshots, run pre-deploy checks, and produce plain-language reports for non-technical users.
 
-The project currently provides 34 MCP tools, is written in TypeScript, runs locally, and does not require a database. VibeGuide is dogfooded with its own MCP tools before commits.
+The project currently provides 37 MCP tools, is written in TypeScript, runs locally, and does not require an external database. Phase 3 adds a local SQLite index for faster dependency/query workflows. VibeGuide is dogfooded with its own MCP tools before commits.
+
+Credits and AI collaboration roles are documented in [CREDITS.md](CREDITS.md).
 
 ## Current Status
 
+- Current milestone: `0.3 beta` / dogfood release candidate, not 1.0 yet.
 - Main development branch: `v2-dev`.
 - Recommended runtime: Node.js 20+.
 - Quality gate: `npm run build`, `npm test`, `npm run test:coverage`, `npm run bench`, `npm run check`.
 - CI runs on `main` and `v2-dev`.
 - Generated artifacts such as `coverage/`, `dist/`, `cache/`, and private plans under `docs/plans/` should not be committed.
+
+## Multi-model Collaboration
+
+VibeGuide is being developed through a multi-model AI workflow, with a human maintainer controlling scope and final decisions. The goal is not to let agents "be creative" freely. The goal is to make agents follow the request, stay inside scope, and provide verifiable evidence.
+
+Current dogfooding roles:
+
+- **Claude Opus 4.7** — reviewer/architect. Claude focuses on root-cause analysis, technical briefs, P0/P1/P2/P3 prioritization, trade-off challenges, and architectural direction.
+- **GPT-5.5** — independent reviewer. GPT focuses on code review, trust-layer issues, false-clean/false-pass detection, acceptance criteria, runtime probes, and regression review.
+- **Kimi-K2.6** — implementation worker. Kimi receives tightly scoped briefs, edits code, adds tests, runs verification, and reports results. Kimi is not used for open-ended architecture decisions without a clear brief.
+- **Human maintainer** — product owner. The maintainer defines product goals, chooses trade-offs, decides when to stop expanding scope, and evaluates final output.
+
+This process is documented so other people can judge whether multi-model collaboration actually reduces hallucination and rework. Important changes still have to pass build, tests, self-checks, and cross-review; every model can be wrong without gates.
 
 ## What VibeGuide Solves
 
@@ -76,7 +92,7 @@ Add this to `~/.mcp.json` or a project-level `.mcp.json`:
 
 Then open Claude Code and use `/mcp` to verify the connection.
 
-## 34 Tools
+## 37 Tools
 
 ### Core — Understand the Codebase
 
@@ -84,6 +100,7 @@ Then open Claude Code and use `/mcp` to verify the connection.
 - `vibeguide_get_deps` — Read the scanned dependency graph.
 - `vibeguide_get_file` — Read files safely with path traversal protection.
 - `vibeguide_dependency_graph` — Export the dependency graph as Mermaid or JSON.
+- `vibeguide_language_support` — List active analyzers for JavaScript, TypeScript, Python, Go, and Rust.
 - `vibeguide_trace_journey` — Trace a user journey through related files.
 
 ### Bug Detection — Find Bugs Before Fixing
@@ -109,6 +126,8 @@ Then open Claude Code and use `/mcp` to verify the connection.
 - `vibeguide_changelog` — Generate a Vietnamese changelog from git history.
 - `vibeguide_diff_summary` — Summarize the current diff for non-technical users.
 - `vibeguide_what_changed` — Show recent commits, files, and changes.
+- `vibeguide_git_status` — Show branch, SHA, and clean/dirty status.
+- `vibeguide_git_log` — Show structured git history, optionally with changed files.
 
 ### Session Tracking — Track the Work Session
 
@@ -163,6 +182,10 @@ Example:
     "test-*.cjs",
     "scripts/**"
   ],
+  "parser": {
+    "backend": "tree-sitter",
+    "legacyParser": false
+  },
   "thresholds": {
     "bugPatterns": {
       "critical": 0,
@@ -182,6 +205,8 @@ Example:
 Important fields:
 
 - `ignorePatterns` excludes fixtures, scripts, generated artifacts, and private plans from scans.
+- `parser.backend` defaults to `tree-sitter`; JavaScript, TypeScript, Python, Go, and Rust use the WASM tree-sitter backend, with static fallback available for rollback.
+- `parser.legacyParser` or env `VIBEGUIDE_LEGACY_PARSER=1` restores the old JS/TS parser if a dependency graph rollback is needed during one minor version.
 - `thresholds` tunes warnings for bug patterns, orphan files, and context budget.
 - `security` enables or disables security-oriented checks.
 - `framework` can stay as `auto` when VibeGuide should detect the project type.

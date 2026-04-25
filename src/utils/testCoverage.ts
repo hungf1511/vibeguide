@@ -1,9 +1,10 @@
-﻿/** Đọc coverage report (coverage-summary.json hoặc lcov.info) và liệt kê file yếu. */
+/** �?c coverage report (coverage-summary.json ho?c lcov.info) v� li?t k� file y?u. */
 import * as fs from "fs";
 import * as path from "path";
 import type { TestCoverageResult } from "../types.js";
 import { normalizePath } from "./scanner.js";
 
+/** Read coverage report and surface weak files. */
 export function getTestCoverage(repo: string): TestCoverageResult {
   const summaryPath = path.join(repo, "coverage", "coverage-summary.json");
   if (fs.existsSync(summaryPath)) {

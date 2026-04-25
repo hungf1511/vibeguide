@@ -1,9 +1,10 @@
-﻿/** Tìm vòng lặp import trong dependency graph bằng DFS. */
+/** T�m v�ng l?p import trong dependency graph b?ng DFS. */
 import type { CircularDepsResult } from "../types.js";
 import { scanDependencies } from "./scanner.js";
 
-export function findCircularDeps(repo: string): CircularDepsResult {
-  const graph = scanDependencies(repo);
+/** Detect circular dependencies in the import graph. */
+export async function findCircularDeps(repo: string): Promise<CircularDepsResult> {
+  const graph = await (scanDependencies(repo));
   const adj = new Map<string, string[]>();
   for (const e of graph.edges) {
     if (!adj.has(e.from)) adj.set(e.from, []);

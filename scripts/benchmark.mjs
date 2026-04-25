@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { scanDependencies } from "../dist/utils/scanner.js";
 import { analyzeMonorepo } from "../dist/utils/monorepo.js";
 import { createSnapshot } from "../dist/utils/snapshot.js";
+import { getLanguageSupport } from "../dist/analyzers/registry.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -16,11 +17,14 @@ const monorepo = path.join(root, "tests/fixtures/monorepo");
 const bench = new Bench({ time: 250 });
 
 bench
-  .add("scanDependencies small (2 files)", () => {
-    scanDependencies(small);
+  .add("scanDependencies small (2 files)", async () => {
+    await scanDependencies(small);
   })
-  .add("scanDependencies medium (30 files)", () => {
-    scanDependencies(medium);
+  .add("scanDependencies medium (30 files)", async () => {
+    await scanDependencies(medium);
+  })
+  .add("language support analyzer dispatch", () => {
+    getLanguageSupport(root);
   })
   .add("analyzeMonorepo monorepo", () => {
     analyzeMonorepo(monorepo, ["apps/web/index.ts"]);

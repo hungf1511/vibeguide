@@ -1,4 +1,4 @@
-/** Zod input schemas for all VibeGuide MCP tools. */
+﻿/** Zod input schemas for all VibeGuide MCP tools. */
 import { z } from "zod";
 
 const repoPathSchema = z.string().optional().describe("Absolute path to the repository. Defaults to current working directory.");
@@ -8,6 +8,7 @@ const scopeSchema = z.object({
   until: z.string().optional().describe("Limit analysis to files changed before this git date/revision."),
 }).optional().describe("Optional analysis scope for large repos.");
 
+/** Zod schemas for all MCP tool inputs. */
 export const schemas: Record<string, z.ZodTypeAny> = {
   vibeguide_impact: z.object({
     filePath: z.string().describe("Path to the file being changed."),
@@ -85,8 +86,11 @@ export const schemas: Record<string, z.ZodTypeAny> = {
     format: z.enum(["mermaid", "json"]).optional().default("mermaid").describe("Output format: mermaid (default) or json."),
     scope: scopeSchema,
   }),
+  vibeguide_language_support: z.object({
+    repoPath: repoPathSchema,
+  }),
   vibeguide_smart_route: z.object({
-    situation: z.string().describe("Mô tả tình huống hiện tại, vd: 'UI chậm khi load trang', 'nút Thanh toán không ăn', 'deploy bị lỗi'"),
+    situation: z.string().describe("MÃ´ táº£ tÃ¬nh huá»‘ng hiá»‡n táº¡i, vd: 'UI cháº­m khi load trang', 'nÃºt Thanh toÃ¡n khÃ´ng Äƒn', 'deploy bá»‹ lá»—i'"),
     repoPath: repoPathSchema,
   }),
   vibeguide_session_status: z.object({
@@ -157,4 +161,16 @@ export const schemas: Record<string, z.ZodTypeAny> = {
     until: z.string().optional().describe("Show commits older than a specific date (ISO 8601)."),
     showFiles: z.boolean().optional().default(false).describe("Include changed files per commit. Default false."),
   }),
+  vibeguide_index_build: z.object({
+    repoPath: repoPathSchema,
+    force: z.boolean().optional().describe("Force rebuild by deleting existing index."),
+  }),
+  vibeguide_index_status: z.object({
+    repoPath: repoPathSchema,
+  }),
+  vibeguide_index_clear: z.object({
+    repoPath: repoPathSchema,
+  }),
 };
+
+

@@ -38,6 +38,7 @@ function getTimelineLines(ctx: SessionContext): string[] {
   return lines;
 }
 
+/** Export a report object to markdown or JSON. */
 export function exportReport(ctx: SessionContext, format: "markdown" | "json" | "text"): string {
   if (format === "markdown") return toMarkdown(ctx);
   if (format === "json") return JSON.stringify(ctx, null, 2);
@@ -92,6 +93,7 @@ function toText(ctx: SessionContext): string {
   return lines.filter(Boolean).join("\n");
 }
 
+/** Save a report to disk with safe path guard. */
 export function saveReport(repo: string, ctx: SessionContext, format: "markdown" | "json" | "text"): string {
   const content = exportReport(ctx, format);
   const ext = format === "markdown" ? "md" : format;

@@ -36,6 +36,7 @@ export interface SessionContext {
   founderDecisions: { type: "approve" | "reject" | "rollback"; note: string; timestamp: string }[];
 }
 
+/** Get or create a session for the current repo. */
 export function getSession(repo: string): SessionContext {
   ensureDir();
   const key = sessionKey(repo);
@@ -62,6 +63,7 @@ function setSession(repo: string, ctx: SessionContext): void {
   fs.writeFileSync(sessionKey(repo), JSON.stringify(ctx, null, 2), "utf-8");
 }
 
+/** Log an event to the session timeline. */
 export function logEvent(repo: string, event: SessionEvent): void {
   const ctx = getSession(repo);
   ctx.events.push(event);
@@ -78,6 +80,7 @@ export function logEvent(repo: string, event: SessionEvent): void {
   setSession(repo, ctx);
 }
 
+/** Return session timeline events. */
 export function getTimeline(ctx: SessionContext): string[] {
   const lines: string[] = [];
   lines.push(`Phiên làm việc bắt đầu: ${ctx.startedAt}`);
@@ -99,6 +102,7 @@ export function getTimeline(ctx: SessionContext): string[] {
   return lines;
 }
 
+/** Generate a human-readable progress summary. */
 export function generateProgressSummary(ctx: SessionContext): string {
   const parts: string[] = [];
 

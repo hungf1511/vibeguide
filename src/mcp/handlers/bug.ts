@@ -1,154 +1,112 @@
-﻿/** Bug detection handlers: heuristic_bug, trace_journey, test_plan, bug_report, suggest_fix. */
+/** Bug detection handlers: heuristic_bug, trace_journey, test_plan, bug_report, suggest_fix. */
 import * as path from "path";
-import type { BugMatch, TestPlan, BugReport, FixSuggestionResult } from "../../types.js";
+import type { TestPlan, BugReport, FixSuggestionResult } from "../../types.js";
 import { resolveRepo } from "../../utils/pathGuard.js";
-import { getFileContent, getAllSourceFiles } from "../../utils/scanner.js";
+import { getFileContent } from "../../utils/scanner.js";
 import { matchPatterns } from "../../utils/heuristics.js";
 import { generateSuggestion } from "../../utils/fixSuggestions.js";
 import { getCachedDeps } from "./impact.js";
+import { createHeuristicBugScan, type HeuristicBugResult } from "./bugScan.js";
+import { createTestPlan } from "./testPlanBuilder.js";
 
+const STEP_TERMS = ["click", "press", "type"];
+const HIGH_SEVERITY_TERMS = ["crash", "error", "fail", "nothing happens", "not working", "stays the same", "doesn't respond", "khong an", "khong chay", "khong hoat dong"];
+const MEDIUM_SEVERITY_TERMS = ["cannot", "won't", "doesn't work", "khong duoc"];
+
+/** Trace a user journey through the codebase from a feature description. */
 export async function handleTraceJourney(args: { journey: string; repoPath?: string }): Promise<{ steps: string[]; files: string[]; confidence: number }> {
   const repo = resolveRepo(args.repoPath);
-  const deps = getCachedDeps(repo);
-  const keywords = args.journey.toLowerCase().split(/\s+/).filter((k) => k.length > 2);
+  const deps = await (getCachedDeps(repo));
+  const keywords = splitKeywords(args.journey);
   const matches: { file: string; score: number }[] = [];
   for (const node of deps.nodes) {
-    const base = path.basename(node, path.extname(node)).toLowerCase();
+    const base = basenameWithoutExt(node);
     let score = 0;
-    for (const kw of keywords) if (base.includes(kw)) score += 2;
+    for (const keyword of keywords) if (base.includes(keyword)) score += 2;
     if (score > 0) matches.push({ file: node, score });
   }
   matches.sort((a, b) => b.score - a.score);
-  const topFiles = matches.slice(0, 5).map((m) => m.file);
-  const steps = topFiles.map((file) => `${file} interacts with ${deps.edges.filter((e) => e.from === file || e.to === file).length} files`);
+  const topFiles = matches.slice(0, 5).map((match) => match.file);
+  const steps = topFiles.map((file) => `${file} interacts with ${deps.edges.filter((edge) => edge.from === file || edge.to === file).length} files`);
   return { steps, files: topFiles, confidence: matches.length > 0 ? Math.min(1, matches[0].score / 5) : 0 };
 }
 
-export async function handleHeuristicBug(args: { symptom: string; repoPath?: string }): Promise<{ summary: string; patternCounts: Record<string, number>; matches: BugMatch[]; suspiciousFiles: string[]; totalScanned: number; totalMatches: number; truncated: boolean }> {
-  const repo = resolveRepo(args.repoPath);
-  const deps = getCachedDeps(repo);
-  const allSourceFiles = getAllSourceFiles(repo);
-  const keywords = args.symptom.toLowerCase().split(/\s+/).filter((k) => k.length > 2);
-  const suspicious = allSourceFiles.filter((f) => keywords.some((k) => path.basename(f, path.extname(f)).toLowerCase().includes(k)));
-  const scanSet = new Set<string>(suspicious);
-  for (const s of suspicious) {
-    for (const edge of deps.edges) {
-      if (edge.from === s) scanSet.add(edge.to);
-      if (edge.to === s) scanSet.add(edge.from);
-    }
-  }
-  const filesToScan = allSourceFiles;
-  const matches: BugMatch[] = [];
-  for (const file of filesToScan) {
-    const content = getFileContent(file, repo);
-    if (!content) continue;
-    for (const m of matchPatterns(content, file)) {
-      const isSuspicious = scanSet.has(file);
-      const baseScore = m.pattern.severity === "critical" ? 1.0 : m.pattern.severity === "high" ? 0.8 : 0.5;
-      matches.push({ pattern: m.pattern.id, file, line: m.line, score: isSuspicious ? baseScore * 1.2 : baseScore });
-    }
-  }
-  matches.sort((a, b) => b.score - a.score);
-  const patternCounts: Record<string, number> = {};
-  for (const m of matches) { patternCounts[m.pattern] = (patternCounts[m.pattern] || 0) + 1; }
-  const TOP_N = 10;
-  const topMatches = matches.slice(0, TOP_N);
-  return {
-    summary: `Scan ${filesToScan.length} file, phat hien ${matches.length} bug pattern (${Object.keys(patternCounts).length} loai). Nghiem trong nhat: ${matches[0]?.pattern || "N/A"} o ${matches[0]?.file || ""}.`,
-    patternCounts,
-    matches: topMatches,
-    suspiciousFiles: suspicious.slice(0, 10),
-    totalScanned: filesToScan.length,
-    totalMatches: matches.length,
-    truncated: matches.length > TOP_N,
-  };
+/** Run heuristic bug scan against a symptom keyword set. */
+export async function handleHeuristicBug(args: { symptom: string; repoPath?: string }): Promise<HeuristicBugResult> {
+  return createHeuristicBugScan(resolveRepo(args.repoPath), args.symptom);
 }
 
+/** Compare current state vs previous snapshot to surface regressions. */
 export async function handleRegression(args: { changedFiles: string[]; repoPath?: string }): Promise<import("../../types.js").RegressionResult> {
   const repo = resolveRepo(args.repoPath);
-  const deps = getCachedDeps(repo);
-  const flows = args.changedFiles.map((changed) => ({ name: `Flow affected by ${path.basename(changed)}`, files: [changed, ...deps.edges.filter((e) => e.to === changed).map((e) => e.from)], passed: true }));
-  return { testFlows: flows, passed: flows.every((f) => f.passed) };
+  const deps = await (getCachedDeps(repo));
+  const flows = args.changedFiles.map((changed) => ({ name: `Flow affected by ${path.basename(changed)}`, files: [changed, ...deps.edges.filter((edge) => edge.to === changed).map((edge) => edge.from)], passed: true }));
+  return { testFlows: flows, passed: flows.every((flow) => flow.passed) };
 }
 
+/** Build a test plan that covers the impact set of a change. */
 export async function handleTestPlan(args: { feature: string; repoPath?: string }): Promise<TestPlan> {
-  const repo = resolveRepo(args.repoPath);
-  const deps = getCachedDeps(repo);
-  const keywords = args.feature.toLowerCase().split(/\s+/).filter((k) => k.length > 2);
-  const synonymMap: Record<string, string[]> = {
-    checkout: ["payment", "pay", "cart"], payment: ["checkout", "pay", "cart"], cart: ["checkout", "payment", "pay"],
-    login: ["auth", "signin"], auth: ["login", "signin"],
-  };
-  const expanded = [...keywords];
-  for (const k of keywords) { if (synonymMap[k]) expanded.push(...synonymMap[k]); }
-  const allKeywords = [...new Set(expanded)];
-  let relevant = deps.nodes.filter((f) => allKeywords.some((k) => path.basename(f, path.extname(f)).toLowerCase().includes(k)));
-  if (relevant.length === 0) {
-    for (const file of deps.nodes) {
-      const content = getFileContent(file, repo);
-      if (!content) continue;
-      const lowerContent = content.toLowerCase();
-      if (allKeywords.some((k) => lowerContent.includes(k))) relevant.push(file);
-    }
-  }
-  const actionSteps: string[] = [];
-  const filesToScan = relevant.length > 0 ? relevant.slice(0, 5) : deps.nodes.filter((f) => /\.(tsx|jsx|vue)$/.test(f));
-  for (const file of filesToScan) {
-    const content = getFileContent(file, repo);
-    if (!content) continue;
-    const btnRegex = /<button\b[\s\S]*?\bonClick\s*=\s*\{[^}]+\}[\s\S]*?>([\s\S]*?)<\/button>/gi;
-    let m: RegExpExecArray | null;
-    while ((m = btnRegex.exec(content)) !== null) {
-      const label = m[1].trim().replace(/\s+/g, " ");
-      if (label && label.length > 1 && label.length < 40 && !actionSteps.includes(`Bam nut "${label}"`)) actionSteps.push(`Bam nut "${label}"`);
-    }
-    const inputRegex = /placeholder\s*=\s*["']([^"']+)["']/gi;
-    while ((m = inputRegex.exec(content)) !== null) {
-      const ph = m[1].trim();
-      if (ph && !actionSteps.includes(`Dien "${ph}"`)) actionSteps.push(`Dien "${ph}"`);
-    }
-  }
-  const steps = [
-    `Mo trang ${args.feature}`,
-    ...actionSteps.slice(0, 4),
-    ...relevant.slice(0, 2).map((f) => `Kiem tra ${path.basename(f, path.extname(f))} hien thi dung`),
-    "Mo DevTools (F12) kiem tra khong co loi do trong Console",
-  ];
-  const expect = [
-    "Trang load thanh cong, khong trang",
-    ...actionSteps.slice(0, 2).map((s) => `${s.replace("Bam nut", "Sau khi bam nut").replace("Dien", "Sau khi dien")} co phan hoi (redirect, toast, hoac UI update)`),
-    "Khong co loi do trong Console",
-  ];
-  return { feature: args.feature, steps, expect };
+  return createTestPlan(resolveRepo(args.repoPath), args.feature);
 }
 
+/** Compose a bug report from symptom + trace + heuristic matches. */
 export async function handleBugReport(args: { description: string; repoPath?: string }): Promise<BugReport> {
   const repo = resolveRepo(args.repoPath);
-  const lines = args.description.split(/\n|(?<=[.!?])\s+/).filter((l) => l.trim());
-  const steps: string[] = [];
-  let severity: BugReport["severity"] = "low";
-  for (const line of lines) {
-    const lower = line.toLowerCase();
-    if (lower.includes("click") || lower.includes("press") || lower.includes("type")) steps.push(line.trim());
-    if (lower.includes("crash") || lower.includes("error") || lower.includes("fail") || lower.includes("nothing happens") || lower.includes("not working") || lower.includes("stays the same") || lower.includes("doesn't respond") || lower.includes("khong an") || lower.includes("khong chay") || lower.includes("khong hoat dong")) severity = "high";
-    if (lower.includes("cannot") || lower.includes("won't") || lower.includes("doesn't work") || lower.includes("khong duoc")) severity = severity === "low" ? "medium" : severity;
-  }
-  return { formatted: ["## Bug Report", "", `**Description:** ${args.description}`, "", "**Steps to reproduce:**", ...steps.map((s, i) => `${i + 1}. ${s}`), "", `**Severity:** ${severity}`, "", `**Repo:** ${repo}`].join("\n"), steps, severity };
+  const lines = args.description.split(/\n|(?<=[.!?])\s+/).filter((line) => line.trim());
+  const steps = lines.filter((line) => containsAny(line.toLowerCase(), STEP_TERMS)).map((line) => line.trim());
+  const severity = inferBugSeverity(lines);
+
+  return {
+    formatted: ["## Bug Report", "", `**Description:** ${args.description}`, "", "**Steps to reproduce:**", ...steps.map((step, i) => `${i + 1}. ${step}`), "", `**Severity:** ${severity}`, "", `**Repo:** ${repo}`].join("\n"),
+    steps,
+    severity,
+  };
 }
 
+/** Suggest a fix for a matched bug pattern. */
 export async function handleSuggestFix(args: { filePath: string; patternId?: string; line?: number; repoPath?: string }): Promise<FixSuggestionResult> {
   const repo = resolveRepo(args.repoPath);
   const content = getFileContent(args.filePath, repo);
   if (!content) return { filePath: args.filePath, suggestions: [] };
-  let suggestions: FixSuggestionResult["suggestions"] = [];
-  if (args.patternId && args.line) {
-    const s = generateSuggestion(content, args.patternId, args.line);
-    if (s) suggestions.push(s);
-  } else {
-    for (const m of matchPatterns(content, args.filePath)) {
-      const s = generateSuggestion(content, m.pattern.id, m.line);
-      if (s) suggestions.push(s);
-    }
-  }
+
+  const suggestions = args.patternId && args.line
+    ? collectRequestedSuggestion(content, args.patternId, args.line)
+    : collectAllSuggestions(content, args.filePath);
   return { filePath: args.filePath, suggestions };
+}
+
+function splitKeywords(value: string): string[] {
+  return value.toLowerCase().split(/\s+/).filter((keyword) => keyword.length > 2);
+}
+
+function basenameWithoutExt(file: string): string {
+  return path.basename(file, path.extname(file)).toLowerCase();
+}
+
+function inferBugSeverity(lines: string[]): BugReport["severity"] {
+  let severity: BugReport["severity"] = "low";
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    if (containsAny(lower, HIGH_SEVERITY_TERMS)) severity = "high";
+    if (containsAny(lower, MEDIUM_SEVERITY_TERMS)) severity = severity === "low" ? "medium" : severity;
+  }
+  return severity;
+}
+
+function containsAny(value: string, terms: string[]): boolean {
+  return terms.some((term) => value.includes(term));
+}
+
+function collectRequestedSuggestion(content: string, patternId: string, line: number): FixSuggestionResult["suggestions"] {
+  const suggestion = generateSuggestion(content, patternId, line);
+  return suggestion ? [suggestion] : [];
+}
+
+function collectAllSuggestions(content: string, filePath: string): FixSuggestionResult["suggestions"] {
+  const suggestions: FixSuggestionResult["suggestions"] = [];
+  for (const match of matchPatterns(content, filePath)) {
+    const suggestion = generateSuggestion(content, match.pattern.id, match.line);
+    if (suggestion) suggestions.push(suggestion);
+  }
+  return suggestions;
 }

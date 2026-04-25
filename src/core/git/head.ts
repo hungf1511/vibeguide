@@ -55,9 +55,21 @@ export function getCacheSignature(dir: string): string {
   }
 }
 
+function isSignatureIgnored(relPath: string): boolean {
+  return relPath.replace(/\\/g, "/").startsWith(".vibeguide/");
+}
+
 function hashDirtyState(dir: string, hash: ReturnType<typeof createHash>): void {
-  const status = runGit(dir, ["status", "--porcelain=v1", "-z"]);
-  hash.update(status);
+  // Parse status entries, filter ignored paths, hash remaining
+  const statusOutput = runGit(dir, ["status", "--porcelain=v1", "-z"]);
+  const statusEntries = splitNul(statusOutput).filter((entry) => {
+    // entry format: "XY filename" — skip if filename is ignored
+    const filename = entry.slice(3);
+    return !isSignatureIgnored(filename);
+  });
+  for (const entry of statusEntries.sort()) {
+    hash.update(entry);
+  }
 
   const dirtyFiles = new Set<string>();
   for (const args of [
@@ -66,15 +78,18 @@ function hashDirtyState(dir: string, hash: ReturnType<typeof createHash>): void 
     ["ls-files", "-o", "--exclude-standard", "-z"],
   ]) {
     for (const file of splitNul(runGit(dir, args))) {
-      dirtyFiles.add(file);
+      if (!isSignatureIgnored(file)) {
+        dirtyFiles.add(file);
+      }
     }
   }
 
   for (const file of [...dirtyFiles].sort()) {
     const repoRoot = path.resolve(dir);
     const fullPath = path.resolve(repoRoot, file);
-    const rel = path.relative(repoRoot, fullPath);
+    const rel = path.relative(repoRoot, fullPath).replace(/\\/g, "/");
     if (rel.startsWith("..") || path.isAbsolute(rel)) continue;
+    if (isSignatureIgnored(rel)) continue;
     hash.update(file);
     try {
       hash.update(fs.readFileSync(fullPath));

@@ -36,6 +36,7 @@ export function getIfFresh(repo: string, signature: string): Record<string, unkn
   }
 }
 
+/** Set a cached value with TTL. */
 export function set(repo: string, data: Record<string, unknown>, signature?: string): void {
   ensureDir();
   const payload: CacheEnvelope<Record<string, unknown>> = { signature: signature ?? "", data };

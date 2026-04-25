@@ -4,15 +4,31 @@
 
 VibeGuide là MCP server giúp AI coding assistant như Codex hoặc Claude Code hiểu codebase trước khi sửa. Thay vì đoán mò, AI có thể quét repo, tìm bug pattern, phân tích ảnh hưởng, tạo snapshot, kiểm tra trước deploy và viết báo cáo dễ hiểu cho người không chuyên kỹ thuật.
 
-Dự án hiện có 34 MCP tools, viết bằng TypeScript, chạy local, không cần database. VibeGuide được dogfood bằng chính MCP tools của nó trước khi commit.
+Dự án hiện có 37 MCP tools, viết bằng TypeScript, chạy local, không cần database ngoài. Phase 3 bắt đầu có SQLite index cục bộ để tăng tốc dependency/query workflow. VibeGuide được dogfood bằng chính MCP tools của nó trước khi commit.
+
+Credits và vai trò cộng tác AI được ghi rõ trong [CREDITS.md](CREDITS.md).
 
 ## Trạng thái hiện tại
 
+- Mốc hiện tại: `0.3 beta` / dogfood release candidate, chưa phải 1.0.
 - Branch phát triển chính: `v2-dev`.
 - Runtime khuyến nghị: Node.js 20+.
 - Quality gate: `npm run build`, `npm test`, `npm run test:coverage`, `npm run bench`, `npm run check`.
 - CI chạy trên `main` và `v2-dev`.
 - Artifact sinh ra như `coverage/`, `dist/`, `cache/` và plan riêng tư trong `docs/plans/` không nên commit.
+
+## Multi-model collaboration
+
+VibeGuide được phát triển bằng workflow nhiều AI model cùng phối hợp, có người duy trì kiểm soát scope và quyết định cuối cùng. Mục tiêu không phải để agent "sáng tạo" tự do, mà để agent làm đúng yêu cầu, đúng phạm vi và có bằng chứng kiểm chứng.
+
+Vai trò chính trong quá trình dogfood hiện tại:
+
+- **Claude Opus 4.7** — reviewer/architect. Claude tập trung bóc root cause, viết brief kỹ thuật, xếp priority P0/P1/P2/P3, challenge trade-off và giữ hướng kiến trúc.
+- **GPT-5.5** — independent reviewer. GPT tập trung review code, soi trust-layer, phát hiện false-clean/false-pass, viết acceptance criteria, chạy probe runtime và xác nhận regression.
+- **Kimi-K2.6** — implementation worker. Kimi nhận brief đã khóa scope, sửa code, thêm test, chạy verification và báo cáo kết quả. Kimi không được dùng cho quyết định kiến trúc mở nếu chưa có brief rõ.
+- **Human maintainer** — product owner. Người duy trì đặt mục tiêu sản phẩm, chọn trade-off, quyết định khi nào dừng scope và đánh giá output cuối.
+
+Workflow này được ghi lại công khai để người khác có thể đánh giá một cách thực tế: dùng nhiều model hợp tác có thể giảm hallucination và giảm vòng sửa sai hay không. Mọi thay đổi quan trọng vẫn phải đi qua build, test, self-check và review chéo; model nào cũng có thể sai nếu không có gate.
 
 ## Vấn đề VibeGuide giải quyết
 
@@ -76,7 +92,7 @@ Thêm vào `~/.mcp.json` hoặc `.mcp.json` trong project:
 
 Sau đó mở Claude Code và dùng `/mcp` để kiểm tra kết nối.
 
-## 34 Tools
+## 37 Tools
 
 ### Core — Hiểu codebase
 
@@ -84,6 +100,7 @@ Sau đó mở Claude Code và dùng `/mcp` để kiểm tra kết nối.
 - `vibeguide_get_deps` — Lấy dependency graph đã scan.
 - `vibeguide_get_file` — Đọc file an toàn, chống path traversal.
 - `vibeguide_dependency_graph` — Xuất dependency graph dạng Mermaid hoặc JSON.
+- `vibeguide_language_support` — Liệt kê analyzer đang active cho JavaScript, TypeScript, Python, Go và Rust.
 - `vibeguide_trace_journey` — Truy vết hành trình người dùng qua các file liên quan.
 
 ### Bug Detection — Tìm lỗi trước khi sửa
@@ -109,6 +126,8 @@ Sau đó mở Claude Code và dùng `/mcp` để kiểm tra kết nối.
 - `vibeguide_changelog` — Tạo changelog tiếng Việt từ git history.
 - `vibeguide_diff_summary` — Tóm tắt diff hiện tại cho non-tech user.
 - `vibeguide_what_changed` — Xem commit, file và thay đổi gần đây.
+- `vibeguide_git_status` — Xem branch, SHA, trạng thái clean/dirty.
+- `vibeguide_git_log` — Xem git log có cấu trúc, tùy chọn kèm file thay đổi.
 
 ### Session Tracking — Theo dõi phiên làm việc
 
@@ -163,6 +182,10 @@ Ví dụ:
     "test-*.cjs",
     "scripts/**"
   ],
+  "parser": {
+    "backend": "tree-sitter",
+    "legacyParser": false
+  },
   "thresholds": {
     "bugPatterns": {
       "critical": 0,
@@ -182,6 +205,8 @@ Ví dụ:
 Các trường quan trọng:
 
 - `ignorePatterns` giúp loại test fixture, script, artifact sinh ra hoặc plan riêng tư khỏi scan.
+- `parser.backend` mặc định là `tree-sitter`; JavaScript, TypeScript, Python, Go và Rust dùng WASM tree-sitter backend, có static fallback khi bật rollback.
+- `parser.legacyParser` hoặc env `VIBEGUIDE_LEGACY_PARSER=1` bật lại parser JS/TS cũ nếu cần rollback dependency graph trong 1 minor version.
 - `thresholds` điều chỉnh mức cảnh báo cho bug pattern, orphan file và context budget.
 - `security` bật/tắt các kiểm tra bảo mật.
 - `framework` để `auto` nếu muốn VibeGuide tự nhận diện project.

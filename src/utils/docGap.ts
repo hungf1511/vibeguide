@@ -1,9 +1,10 @@
-﻿/** Tìm file thiếu README và export thiếu JSDoc. */
+/** T�m file thi?u README v� export thi?u JSDoc. */
 import * as fs from "fs";
 import * as path from "path";
 import type { DocGapResult } from "../types.js";
 import { getAllSourceFiles } from "./scanner.js";
 
+/** Find files missing README and exports missing JSDoc. */
 export function findDocGaps(repo: string): DocGapResult {
   const allFiles = getAllSourceFiles(repo);
   const folders = new Set<string>();
@@ -23,7 +24,12 @@ export function findDocGaps(repo: string): DocGapResult {
   const exportRegex = /export\s+(?:async\s+)?(?:function|const|class)\s+(\w+)/g;
   for (const file of allFiles) {
     if (!/\.(ts|tsx|js|jsx|mjs)$/.test(file)) continue;
-    const content = fs.readFileSync(path.join(repo, file), "utf-8");
+    let content: string;
+    try {
+      content = fs.readFileSync(path.join(repo, file), "utf-8");
+    } catch {
+      continue; // file vanished mid-scan
+    }
     let hasAnyExport = false;
     let m: RegExpExecArray | null;
     while ((m = exportRegex.exec(content)) !== null) {

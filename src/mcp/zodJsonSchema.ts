@@ -15,6 +15,7 @@ interface ZodInternal {
   isOptional?: () => boolean;
 }
 
+/** Convert a Zod schema to JSON Schema for MCP. */
 export function zodToJsonSchema(schema: z.ZodTypeAny): unknown {
   const zodType = schema as unknown as ZodInternal;
   if (zodType._def?.typeName !== "ZodObject" || !zodType._def.shape) return {};

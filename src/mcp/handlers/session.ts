@@ -1,4 +1,4 @@
-﻿/** Session tracking handlers — smart_route, session_status, export_report. */
+/** Session tracking handlers � smart_route, session_status, export_report. */
 import type { SmartRouteResult, ExportReportResult } from "../../types.js";
 import { resolveRepo } from "../../utils/pathGuard.js";
 import { getSession, getTimeline, generateProgressSummary } from "../../utils/sessionContext.js";
@@ -6,6 +6,7 @@ import { exportReport, saveReport } from "../../utils/reportExporter.js";
 import { loadConfig } from "../../utils/configLoader.js";
 import { discoverInstalledPlugins, recommendPluginsForSituation } from "../../utils/pluginDiscovery.js";
 
+/** Route a user request to the best handler. */
 export async function handleSmartRoute(args: { situation: string; repoPath?: string }): Promise<SmartRouteResult> {
   const plugins = discoverInstalledPlugins();
   const { plugins: recommended, tools, detectedType } = recommendPluginsForSituation(args.situation, plugins);
@@ -40,6 +41,7 @@ export async function handleSmartRoute(args: { situation: string; repoPath?: str
   };
 }
 
+/** Return current session state and context. */
 export async function handleSessionStatus(args: { repoPath?: string }): Promise<{ summary: string; timeline: string[]; status: string; snapshotId?: string; lastAction?: string }> {
   const repo = resolveRepo(args.repoPath);
   const ctx = getSession(repo);
@@ -54,6 +56,7 @@ export async function handleSessionStatus(args: { repoPath?: string }): Promise<
   };
 }
 
+/** Export session report to a file. */
 export async function handleExportReport(args: { repoPath?: string; format?: "markdown" | "json" | "text"; saveToFile?: boolean }): Promise<ExportReportResult> {
   const repo = resolveRepo(args.repoPath);
   const config = loadConfig(repo);

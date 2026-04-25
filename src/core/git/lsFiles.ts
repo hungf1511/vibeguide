@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { runGit, isGitRepo } from "./runGit.js";
 import { loadConfig, shouldIgnore } from "../../utils/configLoader.js";
+import { getCacheSignature } from "./head.js";
 
 const EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".py", ".go", ".rs", ".java", ".kt", ".swift"]);
 const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", "cache", "coverage"]);
@@ -30,14 +31,19 @@ function isGitRepoCached(dir: string): boolean {
 
 /**
  * Per-process cache for lsFiles results.
- * Safe because MCP server is stateless: each request spawns a fresh process,
- * and the repo does not change during a single request.
+ * Cache key includes repo signature so entries invalidate when HEAD or working tree changes.
  */
 const lsFilesCache = new Map<string, string[]>();
 
 /** List all source files — uses git ls-files when in a git repo, falls back to fs walk */
 export function lsFiles(dir: string, scope?: FileScope): string[] {
-  const cacheKey = scope ? `${dir}:${JSON.stringify(scope)}` : dir;
+  let signature = "";
+  try {
+    signature = getCacheSignature(dir);
+  } catch {
+    // non-git repo — cache by dir + scope only
+  }
+  const cacheKey = `${dir}:${signature}:${scope ? JSON.stringify(scope) : ""}`;
   if (lsFilesCache.has(cacheKey)) {
     return lsFilesCache.get(cacheKey)!;
   }

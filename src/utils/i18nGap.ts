@@ -1,4 +1,4 @@
-﻿/** Tìm key dịch thiếu/thừa giữa các locale file. */
+/** T�m key d?ch thi?u/th?a gi?a c�c locale file. */
 import * as fs from "fs";
 import * as path from "path";
 import type { I18nGapResult } from "../types.js";
@@ -9,6 +9,7 @@ const LOCALE_GLOBS = [
   "public/locales",
 ];
 
+/** Find missing translations compared to base locale. */
 export function findI18nGap(repo: string, baseLocale = "en"): I18nGapResult {
   const localeFiles = new Map<string, Set<string>>();
 

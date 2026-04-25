@@ -26,6 +26,7 @@ interface GitLogResult {
   summary: string;
 }
 
+/** Working tree status: staged, unstaged, untracked. */
 export async function handleGitStatus(args: { repoPath?: string }): Promise<GitStatusResult> {
   const repo = resolveRepo(args.repoPath);
   const head = getHead(repo);
@@ -43,6 +44,7 @@ export async function handleGitStatus(args: { repoPath?: string }): Promise<GitS
   };
 }
 
+/** Recent commits with author, date, message. */
 export async function handleGitLog(args: { repoPath?: string; count?: number; since?: string; until?: string; showFiles?: boolean }): Promise<GitLogResult> {
   const repo = resolveRepo(args.repoPath);
   const count = args.count ?? 20;

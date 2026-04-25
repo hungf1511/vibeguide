@@ -12,6 +12,10 @@
     "parallel": true,
     "maxDepth": 10
   },
+  "parser": {
+    "backend": "tree-sitter",
+    "legacyParser": false
+  },
   "thresholds": {
     "bugPatterns": {
       "critical": 0,

@@ -1,25 +1,32 @@
 {
   "name": "vibeguide",
-  "version": "1.0.0",
+  "version": "0.3.0-beta",
   "description": "Bridge between AI Developers and Non-Tech Users via MCP",
   "main": "dist/mcp/server.js",
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "build": "tsc",
+    "test:coverage": "vitest run --coverage --testTimeout 20000",
+    "build": "tsc && npm run build:assets",
     "check": "node scripts/self-check.mjs",
     "bench": "node scripts/benchmark.mjs",
     "dev": "tsc --watch",
-    "start": "node dist/mcp/server.js"
+    "start": "node dist/mcp/server.js",
+    "build:assets": "node -e \"require('fs').cpSync('src/index/migrations','dist/index/migrations',{recursive:true});require('fs').cpSync('src/index/schema.sql','dist/index/schema.sql')\"",
+    "bench:index": "npm run build && node scripts/benchmark-index.mjs",
+    "bench:coldstart": "tsc && node scripts/benchmark-coldstart.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@vscode/tree-sitter-wasm": "^0.3.1",
+    "better-sqlite3": "^12.9.0",
     "simple-git": "^3.27.0",
+    "web-tree-sitter": "^0.26.8",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^4.1.5",
     "tinybench": "^6.0.0",

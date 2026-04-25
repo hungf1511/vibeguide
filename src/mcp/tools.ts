@@ -1,4 +1,4 @@
-/** Central tool registry — định nghĩa 34 MCP tools với Zod schemas và bilingual descriptions. */
+﻿/** Central tool registry â€” Ä‘á»‹nh nghÄ©a MCP tools vá»›i Zod schemas vÃ  bilingual descriptions. */
 import {
   handleImpact,
   handleTraceJourney,
@@ -17,6 +17,7 @@ import {
   handleSuggestFix,
   handleChangelog,
   handleDepGraph,
+  handleLanguageSupport,
   handleSmartRoute,
   handleSessionStatus,
   handleExportReport,
@@ -36,6 +37,9 @@ import {
   handleMeetingNotes,
   handleGitStatus,
   handleGitLog,
+  handleIndexBuild,
+  handleIndexStatus,
+  handleIndexClear,
 } from "./handlers/index.js";
 import { logEvent } from "../utils/sessionContext.js";
 import { getToolDescription } from "./toolDescriptions.js";
@@ -61,6 +65,7 @@ const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   vibeguide_suggest_fix: handleSuggestFix as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_changelog: handleChangelog as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_dependency_graph: handleDepGraph as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_language_support: handleLanguageSupport as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_smart_route: handleSmartRoute as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_session_status: handleSessionStatus as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_export_report: handleExportReport as unknown as (args: unknown) => Promise<unknown>,
@@ -80,8 +85,12 @@ const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   vibeguide_meeting_notes: handleMeetingNotes as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_git_status: handleGitStatus as unknown as (args: unknown) => Promise<unknown>,
   vibeguide_git_log: handleGitLog as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_index_build: handleIndexBuild as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_index_status: handleIndexStatus as unknown as (args: unknown) => Promise<unknown>,
+  vibeguide_index_clear: handleIndexClear as unknown as (args: unknown) => Promise<unknown>,
 };
 
+/** Register all VibeGuide tools with the MCP server. */
 export function registerTools(): { name: string; description: string; inputSchema: unknown }[] {
   return Object.entries(schemas).map(([name, schema]) => ({
     name,
@@ -90,6 +99,7 @@ export function registerTools(): { name: string; description: string; inputSchem
   }));
 }
 
+/** Dispatch an MCP tool call to the correct handler. */
 export async function handleToolCall(name: string, args: unknown): Promise<any> {
   const handler = handlers[name];
   const schema = schemas[name];
@@ -138,3 +148,5 @@ export async function handleToolCall(name: string, args: unknown): Promise<any> 
     ],
   };
 }
+
+

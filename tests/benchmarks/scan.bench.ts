@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { scanDependencies } from "../../src/utils/scanner.js";
 import { analyzeMonorepo } from "../../src/utils/monorepo.js";
 import { createSnapshot, restoreSnapshot } from "../../src/utils/snapshot.js";
+import { getLanguageSupport } from "../../src/analyzers/registry.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../..");
@@ -14,11 +15,14 @@ const MONO = path.resolve(__dirname, "../fixtures/monorepo");
 const bench = new Bench({ time: 1000 });
 
 bench
-  .add("scanDependencies small (2 files)", () => {
-    scanDependencies(SMALL);
+  .add("scanDependencies small (2 files)", async () => {
+    await scanDependencies(SMALL);
   })
-  .add("scanDependencies medium (30 files)", () => {
-    scanDependencies(MEDIUM);
+  .add("scanDependencies medium (30 files)", async () => {
+    await scanDependencies(MEDIUM);
+  })
+  .add("language support analyzer dispatch", () => {
+    getLanguageSupport(REPO_ROOT);
   })
   .add("analyzeMonorepo monorepo", () => {
     analyzeMonorepo(MONO, ["apps/web/index.ts"]);

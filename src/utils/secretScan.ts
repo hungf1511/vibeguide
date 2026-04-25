@@ -1,4 +1,4 @@
-﻿/** Quét secret, API key, credential trong source code. */
+/** Qu�t secret, API key, credential trong source code. */
 import type { SecretScanResult, SecretFinding } from "../types.js";
 import { getAllSourceFiles } from "./scanner.js";
 import { readSafe } from "./readSafe.js";
@@ -29,6 +29,7 @@ function shannonEntropy(s: string): number {
   return h;
 }
 
+/** Scan files for hardcoded secrets and credentials. */
 export function scanSecrets(repo: string): SecretScanResult {
   const allFiles = getAllSourceFiles(repo);
   const findings: SecretFinding[] = [];

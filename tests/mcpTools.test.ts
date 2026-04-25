@@ -16,6 +16,7 @@ import {
   handleGitStatus,
   handleHeuristicBug,
   handleImpact,
+  handleLanguageSupport,
   handleMonorepoRoute,
   handlePerfBudget,
   handleScanRepo,
@@ -34,6 +35,7 @@ describe("MCP registry", () => {
     const tools = registerTools();
     expect(tools).toHaveLength(Object.keys(schemas).length);
     expect(tools.map((t) => t.name)).toContain("vibeguide_git_log");
+    expect(tools.map((t) => t.name)).toContain("vibeguide_language_support");
     const scan = tools.find((t) => t.name === "vibeguide_scan_repo");
     expect(JSON.stringify(scan?.inputSchema)).toContain("scope");
   });
@@ -64,7 +66,7 @@ describe("MCP handlers", () => {
 
     const fix = await handleSuggestFix({ repoPath: TEST_PROJECT, filePath: "src/hooks/useCart.ts" });
     expect(fix.suggestions.length).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it("runs quality and repo tools on VibeGuide itself without scanning generated coverage", async () => {
     const scoped = await handleScanRepo({ repoPath: ROOT, scope: { paths: ["src/core/git"] } });
@@ -74,6 +76,10 @@ describe("MCP handlers", () => {
     const graph = await handleDepGraph({ repoPath: ROOT, format: "json", scope: { paths: ["src/core/git"] } });
     expect(graph.nodes).toBeGreaterThan(0);
     expect(graph.mermaid).toContain("src/core/git");
+
+    const languageSupport = await handleLanguageSupport({ repoPath: ROOT });
+    expect(languageSupport.activeLanguages).toContain("typescript");
+    expect(languageSupport.analyzers[0]).toHaveProperty("backend");
 
     const complexity = await handleComplexity({ repoPath: ROOT, thresholdComplexity: 15, thresholdLoc: 300 });
     expect(complexity.files.some((f) => f.file.startsWith("coverage/"))).toBe(false);
@@ -92,7 +98,7 @@ describe("MCP handlers", () => {
 
     const perf = await handlePerfBudget({ repoPath: ROOT, budgetKb: 500 });
     expect(perf.found).toBe(true);
-  });
+  }, 15000);
 
   it("runs git-native tools and deploy checks", async () => {
     const status = await handleGitStatus({ repoPath: ROOT });

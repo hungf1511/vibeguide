@@ -3,8 +3,10 @@ import { resolveRepo } from "../../utils/pathGuard.js";
 import { generateChangelog } from "../../utils/changelog.js";
 import { getSession, getTimeline, generateProgressSummary } from "../../utils/sessionContext.js";
 import { getGitStatus } from "../../utils/scanner.js";
+import { dirtyPaths } from "../../core/git/status.js";
 import type { FounderBriefResult, MeetingNotesResult } from "../../types.js";
 
+/** Founder-level repo summary: scope, health, key signals. */
 export async function handleFounderBrief(args: { repoPath?: string; days?: number }): Promise<FounderBriefResult> {
   const repo = resolveRepo(args.repoPath);
   const days = args.days ?? 7;
@@ -32,7 +34,7 @@ export async function handleFounderBrief(args: { repoPath?: string; days?: numbe
   if (ctx.status === "deploying") nextSteps.push("Kiểm tra deploy_check trước khi đẩy production");
   if (ctx.filesChanged.length > 0 && !ctx.snapshotId) nextSteps.push("Tạo snapshot trước khi deploy");
 
-  const brief = [
+    const brief = [
     "# Báo cáo tuần (" + days + " ngày)",
     "",
     "## Điểm nổi bật",
@@ -41,7 +43,7 @@ export async function handleFounderBrief(args: { repoPath?: string; days?: numbe
     "## Hoạt động",
     "- Tổng " + recentEvents.length + " action trong session hiện tại",
     mostUsed.length > 0 ? "- Tool dùng nhiều: " + mostUsed.map(([n, c]) => n + " (" + c + ")").join(", ") : "",
-    "- Trạng thái: " + ctx.status,
+    "- Trang thai: " + ctx.status,
     "",
     "## Bước tiếp theo",
     ...(nextSteps.length > 0 ? nextSteps.map((s) => "- " + s) : ["- Không có việc đang lo"]),
@@ -50,6 +52,7 @@ export async function handleFounderBrief(args: { repoPath?: string; days?: numbe
   return { brief, highlights, nextSteps };
 }
 
+/** Generate meeting notes from recent commits and changes. */
 export async function handleMeetingNotes(args: { repoPath?: string }): Promise<MeetingNotesResult> {
   const repo = resolveRepo(args.repoPath);
   const ctx = getSession(repo);
@@ -58,6 +61,10 @@ export async function handleMeetingNotes(args: { repoPath?: string }): Promise<M
   const done: string[] = [];
   const inProgress: string[] = [];
   const blockers: string[] = [];
+
+  if (!status.available) {
+    blockers.push("Git status unavailable — cannot verify working tree state");
+  }
 
   for (const decision of ctx.founderDecisions) {
     if (decision.type === "approve") done.push("Founder duyệt: " + decision.note);
@@ -75,7 +82,8 @@ export async function handleMeetingNotes(args: { repoPath?: string }): Promise<M
   if (ctx.status === "deploying") inProgress.push("Đang deploy");
   if (ctx.status === "analyzing") inProgress.push("Đang phân tích impact");
 
-  if (status.modified.length > 0) inProgress.push(status.modified.length + " file đang sửa chưa commit");
+  const dirty = dirtyPaths(status);
+  if (dirty.length > 0) inProgress.push(dirty.length + " file đang sửa chưa commit (bao gồm staged/untracked)");
 
   const notes = [
     "# Biên bản họp",

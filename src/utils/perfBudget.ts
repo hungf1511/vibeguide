@@ -1,9 +1,10 @@
-﻿/** Kiểm tra kích thước bundle JS/CSS so với performance budget. */
+/** Ki?m tra k�ch thu?c bundle JS/CSS so v?i performance budget. */
 import * as fs from "fs";
 import * as path from "path";
 import type { PerfBudgetResult } from "../types.js";
 import { normalizePath } from "./scanner.js";
 
+/** Check bundle size and perf metrics against budget. */
 export function checkPerfBudget(repo: string, budgetKb = 250): PerfBudgetResult {
   const candidates = [
     path.join(repo, ".next", "static"),

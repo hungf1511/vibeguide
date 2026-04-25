@@ -59,6 +59,7 @@ function walkFiles(dir: string, base: string, result: string[], ignorePatterns: 
   }
 }
 
+/** Create a snapshot of repo state. */
 export function createSnapshot(repo: string, label?: string): SnapshotData {
   ensureSnapshotDir();
   const files: string[] = [];
@@ -90,6 +91,7 @@ export function createSnapshot(repo: string, label?: string): SnapshotData {
   return data;
 }
 
+/** List all snapshots for a repo. */
 export function listSnapshots(repo: string): SnapshotData[] {
   ensureSnapshotDir();
   const prefix = `${repoHash(repo)}_`;
@@ -108,6 +110,7 @@ export function listSnapshots(repo: string): SnapshotData[] {
   return results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
+/** Retrieve a snapshot by id. */
 export function getSnapshot(repo: string, snapshotId: string): SnapshotData | null {
   const sp = snapshotPath(repo, snapshotId);
   if (!fs.existsSync(sp)) return null;
@@ -118,6 +121,7 @@ export function getSnapshot(repo: string, snapshotId: string): SnapshotData | nu
   }
 }
 
+/** Restore repo to a snapshot state. */
 export function restoreSnapshot(repo: string, snapshotId: string): { restored: boolean; filesChanged: number; filesDeleted: number } {
   const snapshot = getSnapshot(repo, snapshotId);
   if (!snapshot) return { restored: false, filesChanged: 0, filesDeleted: 0 };

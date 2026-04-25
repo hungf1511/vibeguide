@@ -1,4 +1,4 @@
-export {
+﻿export {
   handleImpact,
   handleImpactConfirm,
   handleRegression,
@@ -11,9 +11,11 @@ export {
   handleWhatChanged,
   handleChangelog,
   handleDepGraph,
+} from "./repo.js";
+export {
   handleSnapshot,
   handleDiffSummary,
-} from "./repo.js";
+} from "./snapshotDiff.js";
 export {
   handleTraceJourney,
   handleHeuristicBug,
@@ -57,3 +59,14 @@ export {
   handleGitStatus,
   handleGitLog,
 } from "./git.js";
+export {
+  handleLanguageSupport,
+} from "./language.js";
+
+
+export {
+  handleIndexBuild,
+  handleIndexStatus,
+  handleIndexClear,
+} from "./indexCommands.js";
+

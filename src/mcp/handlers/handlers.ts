@@ -11,9 +11,11 @@ export {
   handleWhatChanged,
   handleChangelog,
   handleDepGraph,
+} from "./repo.js";
+export {
   handleSnapshot,
   handleDiffSummary,
-} from "./repo.js";
+} from "./snapshotDiff.js";
 export {
   handleTraceJourney,
   handleHeuristicBug,
